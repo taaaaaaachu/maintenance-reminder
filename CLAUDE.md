@@ -62,7 +62,7 @@ npm workspaces モノレポ
 
 「テンプレートにも反映して」と言われたら、以下の手順で同期する。
 
-1. ローカルの軽量タグ`template-synced`が指すコミットから現在のHEADまでの差分を確認する: `git diff template-synced..HEAD`(このタグはリモートにはpushしていない、ローカルだけの目印)
+1. 軽量タグ`template-synced`が指すコミットから現在のHEADまでの差分を確認する: `git diff template-synced..HEAD`
 2. 環境固有ファイルは反映しない: `backend/wrangler.toml`の個人値(ドメイン・database_id・送信元アドレス)、`backend/.dev.vars`、`CLAUDE.md`の「本番環境」セクション
 3. テンプレート側リポジトリ(スクラッチ領域等に別途clone)に差分を適用し、個人情報が混入していないことをgrep等で再確認してからコミット・push
-4. 反映が終わったら、ローカルの`template-synced`タグを最新コミットに付け直す: `git tag -f template-synced <commit>`
+4. 反映が終わったら、`template-synced`タグを最新コミットに付け直してpushする: `git tag -f template-synced <commit> && git push origin template-synced -f`
