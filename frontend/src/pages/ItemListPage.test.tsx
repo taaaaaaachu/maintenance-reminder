@@ -23,11 +23,11 @@ function makeItem(overrides: Partial<Item> = {}): Item {
   };
 }
 
-function renderWithClient(highlightItemId?: string | null) {
+function renderWithClient(highlightItemIds?: string[]) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <ItemListPage highlightItemId={highlightItemId} />
+      <ItemListPage highlightItemIds={highlightItemIds} />
     </QueryClientProvider>,
   );
 }
@@ -272,7 +272,7 @@ describe("ItemListPage", () => {
     const scrollIntoViewMock = vi.fn();
     vi.spyOn(Element.prototype, "scrollIntoView").mockImplementation(scrollIntoViewMock);
 
-    renderWithClient("item-2");
+    renderWithClient(["item-2"]);
 
     await waitFor(() => {
       expect(screen.getByText("洗濯機のフィルター掃除")).toBeInTheDocument();
@@ -285,6 +285,28 @@ describe("ItemListPage", () => {
     expect(screen.queryByLabelText("ジャンルで絞り込み")).toBeInTheDocument();
 
     scrollIntoViewMock.mockRestore();
+  });
+
+  it("highlights every item listed in highlightItemIds", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          makeItem({ id: "item-1", name: "ロボット掃除機の清掃" }),
+          makeItem({ id: "item-2", name: "洗濯機のフィルター掃除" }),
+        ]),
+        { status: 200 },
+      ),
+    );
+
+    renderWithClient(["item-1", "item-2"]);
+
+    await waitFor(() => {
+      expect(screen.getByText("ロボット掃除機の清掃")).toBeInTheDocument();
+      expect(screen.getByText("洗濯機のフィルター掃除")).toBeInTheDocument();
+    });
+
+    const highlightedCards = document.querySelectorAll(".border-amber-400");
+    expect(highlightedCards).toHaveLength(2);
   });
 
   it("does not delete the item when the confirm dialog is cancelled", async () => {

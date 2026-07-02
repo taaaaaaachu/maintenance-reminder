@@ -27,13 +27,32 @@ function bodyFor(item: Item, overdueDays: number): string {
   return `${item.name} のお手入れ予定日を${overdueDays}日も過ぎています(予定日: ${item.nextDueAt})。早めのお手入れをお願いします。`;
 }
 
-export function buildReminderMessage(item: Item, today: string, baseUrl: string): NotificationMessage {
-  const overdueDays = daysBetweenDateStrings(item.nextDueAt, today);
-  const { emoji, label } = urgencyFor(overdueDays);
+function buildItemsUrl(baseUrl: string, items: Item[]): string {
+  return `${baseUrl}/?items=${items.map((item) => item.id).join(",")}`;
+}
+
+export function buildReminderMessage(items: Item[], today: string, baseUrl: string): NotificationMessage {
+  if (items.length === 1) {
+    const item = items[0]!;
+    const overdueDays = daysBetweenDateStrings(item.nextDueAt, today);
+    const { emoji, label } = urgencyFor(overdueDays);
+
+    return {
+      title: `${emoji}【${label}】${item.name}`,
+      body: bodyFor(item, overdueDays),
+      url: buildItemsUrl(baseUrl, items),
+    };
+  }
+
+  const lines = items.map((item) => {
+    const overdueDays = daysBetweenDateStrings(item.nextDueAt, today);
+    const { label } = urgencyFor(overdueDays);
+    return `・${item.name}(${label})`;
+  });
 
   return {
-    title: `${emoji}【${label}】${item.name}`,
-    body: bodyFor(item, overdueDays),
-    url: `${baseUrl}/?item=${item.id}`,
+    title: `🔔【${items.length}件】お手入れリマインダー`,
+    body: `以下のお手入れが必要です。\n\n${lines.join("\n")}`,
+    url: buildItemsUrl(baseUrl, items),
   };
 }

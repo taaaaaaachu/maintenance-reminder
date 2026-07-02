@@ -11,12 +11,16 @@ function tabButtonClass(active: boolean): string {
   }`;
 }
 
-function highlightItemIdFromUrl(): string | null {
-  return new URLSearchParams(window.location.search).get("item");
+function highlightItemIdsFromUrl(): string[] {
+  const params = new URLSearchParams(window.location.search);
+  const items = params.get("items");
+  if (items) return items.split(",").map((id) => id.trim()).filter(Boolean);
+  const item = params.get("item");
+  return item ? [item] : [];
 }
 
 export function App() {
-  const [highlightItemId] = useState<string | null>(highlightItemIdFromUrl);
+  const [highlightItemIds] = useState<string[]>(highlightItemIdsFromUrl);
   const [tab, setTab] = useState<Tab>("items");
 
   return (
@@ -38,7 +42,7 @@ export function App() {
         </div>
       </header>
       <main className="mx-auto max-w-2xl px-4 py-6">
-        {tab === "items" && <ItemListPage highlightItemId={highlightItemId} />}
+        {tab === "items" && <ItemListPage highlightItemIds={highlightItemIds} />}
         {tab === "settings" && <SettingsPage />}
         {tab === "log" && <NotificationLogPage />}
       </main>

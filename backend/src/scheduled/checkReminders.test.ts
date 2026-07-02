@@ -220,4 +220,88 @@ describe("checkReminders", () => {
       await notificationsDb.hasSuccessfulNotificationSince(env.DB, morningItem.id, "pushover", "user-key-1", "2026-07-01T15:00:00.000Z"),
     ).toBe(true);
   });
+
+  it("bundles multiple due items for the same recipient into a single notification", async () => {
+    const itemA = await itemsDb.createItem(env.DB, {
+      id: "due-a",
+      name: "アイテムA",
+      category: null,
+      intervalDays: 7,
+      notifyDaysBefore: 0,
+      notifyTime: "07:00",
+      memo: null,
+      lastDoneAt: "2026-06-25",
+      nextDueAt: "2026-07-02",
+    });
+    const itemB = await itemsDb.createItem(env.DB, {
+      id: "due-b",
+      name: "アイテムB",
+      category: null,
+      intervalDays: 7,
+      notifyDaysBefore: 0,
+      notifyTime: "07:00",
+      memo: null,
+      lastDoneAt: "2026-06-20",
+      nextDueAt: "2026-06-27",
+    });
+    await notificationsDb.setNotificationEnabled(env.DB, "pushover", true);
+    await notificationsDb.addRecipient(env.DB, "pushover", "user-key-1", null);
+
+    await checkReminders(env);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = new URLSearchParams(init.body as string);
+    expect(body.get("message")).toContain("アイテムA");
+    expect(body.get("message")).toContain("アイテムB");
+    expect(body.get("url")).toContain("due-a");
+    expect(body.get("url")).toContain("due-b");
+
+    expect(
+      await notificationsDb.hasSuccessfulNotificationSince(env.DB, itemA.id, "pushover", "user-key-1", "2026-07-01T15:00:00.000Z"),
+    ).toBe(true);
+    expect(
+      await notificationsDb.hasSuccessfulNotificationSince(env.DB, itemB.id, "pushover", "user-key-1", "2026-07-01T15:00:00.000Z"),
+    ).toBe(true);
+  });
+
+  it("records a failed log entry for every bundled item when the send fails", async () => {
+    fetchMock.mockResolvedValue(new Response("server error", { status: 500 }));
+    const itemA = await itemsDb.createItem(env.DB, {
+      id: "due-c",
+      name: "アイテムC",
+      category: null,
+      intervalDays: 7,
+      notifyDaysBefore: 0,
+      notifyTime: "07:00",
+      memo: null,
+      lastDoneAt: "2026-06-25",
+      nextDueAt: "2026-07-02",
+    });
+    const itemB = await itemsDb.createItem(env.DB, {
+      id: "due-d",
+      name: "アイテムD",
+      category: null,
+      intervalDays: 7,
+      notifyDaysBefore: 0,
+      notifyTime: "07:00",
+      memo: null,
+      lastDoneAt: "2026-06-20",
+      nextDueAt: "2026-06-27",
+    });
+    await notificationsDb.setNotificationEnabled(env.DB, "pushover", true);
+    await notificationsDb.addRecipient(env.DB, "pushover", "user-key-1", null);
+
+    await checkReminders(env);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    for (const item of [itemA, itemB]) {
+      const { results } = await env.DB.prepare(
+        "SELECT * FROM notification_log WHERE item_id = ? AND status = 'failed'",
+      )
+        .bind(item.id)
+        .all();
+      expect(results).toHaveLength(1);
+    }
+  });
 });

@@ -7,10 +7,10 @@ import { daysUntil } from "../components/dueStatus.js";
 import { ItemFormPage } from "./ItemFormPage.js";
 
 interface ItemListPageProps {
-  highlightItemId?: string | null;
+  highlightItemIds?: string[];
 }
 
-export function ItemListPage({ highlightItemId }: ItemListPageProps) {
+export function ItemListPage({ highlightItemIds = [] }: ItemListPageProps) {
   const queryClient = useQueryClient();
   const [isAdding, setIsAdding] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
@@ -29,16 +29,16 @@ export function ItemListPage({ highlightItemId }: ItemListPageProps) {
   );
 
   useEffect(() => {
-    if (highlightItemId) {
+    if (highlightItemIds.length > 0) {
       setCategoryFilter("");
       setOverdueOnly(false);
     }
-  }, [highlightItemId]);
+  }, [highlightItemIds]);
 
   useEffect(() => {
-    if (!highlightItemId || items.length === 0) return;
-    document.getElementById(`item-${highlightItemId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [highlightItemId, items.length]);
+    if (highlightItemIds.length === 0 || items.length === 0) return;
+    document.getElementById(`item-${highlightItemIds[0]}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlightItemIds, items.length]);
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["items"] });
@@ -169,7 +169,7 @@ export function ItemListPage({ highlightItemId }: ItemListPageProps) {
                   if (confirm(`「${item.name}」を削除しますか?`)) deleteMutation.mutate(item.id);
                 }}
                 isMutating={completeMutation.isPending || snoozeMutation.isPending}
-                isHighlighted={item.id === highlightItemId}
+                isHighlighted={highlightItemIds.includes(item.id)}
               />
             )}
           </div>
