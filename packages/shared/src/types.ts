@@ -52,3 +52,7 @@ export interface UpdateNotificationSettingInput {
   isEnabled: boolean;
   config: Record<string, string>;
 }
+
+export interface IcsFeedToken {
+  token: string;
+}

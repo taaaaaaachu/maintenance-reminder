@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { ApiError } from "@maintenance-reminder/shared";
 import { itemsRouter } from "./routes/items.js";
 import { settingsRouter } from "./routes/settings.js";
+import { feedRouter } from "./routes/feed.js";
 import { HttpError } from "./lib/errors.js";
 import type { HonoEnv } from "./types.js";
 
@@ -9,6 +10,7 @@ export const app = new Hono<HonoEnv>();
 
 app.route("/api/items", itemsRouter);
 app.route("/api/settings", settingsRouter);
+app.route("/feed", feedRouter);
 
 app.onError((err, c) => {
   if (err instanceof HttpError) {

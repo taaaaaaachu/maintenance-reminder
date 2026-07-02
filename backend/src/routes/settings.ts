@@ -4,6 +4,7 @@ import { NOTIFICATION_CHANNELS } from "@maintenance-reminder/shared";
 import type { NotificationChannel } from "@maintenance-reminder/shared";
 import * as notificationsDb from "../db/notifications.js";
 import { sendToChannel } from "../notifications/dispatcher.js";
+import { getOrCreateIcsFeedToken, regenerateIcsFeedToken } from "../ics/token.js";
 import { badRequest } from "../lib/errors.js";
 import type { HonoEnv } from "../types.js";
 
@@ -67,4 +68,14 @@ settingsRouter.post("/notifications/:channel/test", async (c) => {
   }
 
   return c.json({ ok: true });
+});
+
+settingsRouter.get("/ics-feed", async (c) => {
+  const token = await getOrCreateIcsFeedToken(c.env.DB);
+  return c.json({ token });
+});
+
+settingsRouter.post("/ics-feed/regenerate", async (c) => {
+  const token = await regenerateIcsFeedToken(c.env.DB);
+  return c.json({ token });
 });

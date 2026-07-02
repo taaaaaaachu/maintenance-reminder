@@ -5,6 +5,7 @@ const BASE_URL = "https://example.com";
 
 async function clearSettings() {
   await env.DB.prepare("DELETE FROM notification_settings").run();
+  await env.DB.prepare("DELETE FROM app_config").run();
 }
 
 beforeEach(async () => {
@@ -111,5 +112,40 @@ describe("POST /api/settings/notifications/:channel/test", () => {
     });
 
     expect(res.status).toBe(400);
+  });
+});
+
+describe("GET /api/settings/ics-feed", () => {
+  it("returns a token, creating one if it doesn't exist yet", async () => {
+    const res = await exports.default.fetch(`${BASE_URL}/api/settings/ics-feed`);
+    const json = (await res.json()) as { token: string };
+
+    expect(res.status).toBe(200);
+    expect(json.token).toBeTruthy();
+  });
+
+  it("returns the same token across requests", async () => {
+    const first = (await (await exports.default.fetch(`${BASE_URL}/api/settings/ics-feed`)).json()) as {
+      token: string;
+    };
+    const second = (await (await exports.default.fetch(`${BASE_URL}/api/settings/ics-feed`)).json()) as {
+      token: string;
+    };
+
+    expect(second.token).toBe(first.token);
+  });
+});
+
+describe("POST /api/settings/ics-feed/regenerate", () => {
+  it("returns a new token different from the previous one", async () => {
+    const before = (await (await exports.default.fetch(`${BASE_URL}/api/settings/ics-feed`)).json()) as {
+      token: string;
+    };
+
+    const res = await exports.default.fetch(`${BASE_URL}/api/settings/ics-feed/regenerate`, { method: "POST" });
+    const after = (await res.json()) as { token: string };
+
+    expect(res.status).toBe(200);
+    expect(after.token).not.toBe(before.token);
   });
 });

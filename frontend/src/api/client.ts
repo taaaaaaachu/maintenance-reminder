@@ -1,6 +1,7 @@
 import type {
   ApiError,
   CreateItemInput,
+  IcsFeedToken,
   Item,
   NotificationChannel,
   NotificationSetting,
@@ -59,4 +60,12 @@ export function updateNotificationSetting(
 
 export function testNotificationSetting(channel: NotificationChannel): Promise<{ ok: boolean }> {
   return request(`/settings/notifications/${channel}/test`, { method: "POST" });
+}
+
+export function getIcsFeedToken(): Promise<IcsFeedToken> {
+  return request("/settings/ics-feed");
+}
+
+export function regenerateIcsFeedToken(): Promise<IcsFeedToken> {
+  return request("/settings/ics-feed/regenerate", { method: "POST" });
 }

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { NotificationChannel } from "@maintenance-reminder/shared";
 import * as api from "../api/client.js";
 import { NotificationChannelCard } from "../components/NotificationChannelCard.js";
+import { IcsFeedCard } from "../components/IcsFeedCard.js";
 
 export function SettingsPage() {
   const queryClient = useQueryClient();
@@ -49,6 +50,8 @@ export function SettingsPage() {
           />
         ))}
       </div>
+
+      <IcsFeedCard />
     </div>
   );
 }
