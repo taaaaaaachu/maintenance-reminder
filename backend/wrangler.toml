@@ -1,6 +1,11 @@
 name = "maintenance-reminder"
 main = "src/index.ts"
 compatibility_date = "2026-07-01"
+workers_dev = false
+
+[[routes]]
+pattern = "reminder.example.com"
+custom_domain = true
 
 [assets]
 directory = "../frontend/dist"
@@ -11,10 +16,10 @@ run_worker_first = ["/api/*", "/feed/*", "/webhook/*"]
 [[d1_databases]]
 binding = "DB"
 database_name = "maintenance-reminder-db"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "d298b465-997d-471e-9f76-439135b9e758"
 
 [triggers]
 crons = ["0 22 * * *"]
 
 [vars]
-RESEND_FROM_ADDRESS = "reminder@your-domain.example"
+RESEND_FROM_ADDRESS = "reminder@example.com"
