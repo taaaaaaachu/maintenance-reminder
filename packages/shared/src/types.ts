@@ -78,6 +78,10 @@ export interface LineInviteUrl {
   url: string | null;
 }
 
+export interface DefaultNotifyTime {
+  time: string;
+}
+
 export type NotificationStatus = "success" | "failed";
 
 export interface NotificationLogEntry {

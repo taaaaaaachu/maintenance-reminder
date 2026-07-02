@@ -18,6 +18,41 @@ describe("ItemFormPage", () => {
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ notifyDaysBefore: 0, notifyTime: "07:00" }));
   });
 
+  it("uses the given defaultNotifyTime as the initial value when creating an item", async () => {
+    const onSubmit = vi.fn();
+    const user = userEvent.setup();
+    render(<ItemFormPage defaultNotifyTime="20:30" onSubmit={onSubmit} onCancel={vi.fn()} />);
+
+    expect(screen.getByLabelText("通知時刻")).toHaveValue("20:30");
+
+    await user.type(screen.getByLabelText("名前"), "ロボット掃除機");
+    await user.click(screen.getByRole("button", { name: "追加する" }));
+
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ notifyTime: "20:30" }));
+  });
+
+  it("ignores defaultNotifyTime and uses the item's own notifyTime when editing", () => {
+    const initialItem = {
+      id: "1",
+      name: "ロボット掃除機",
+      category: null,
+      intervalDays: 7,
+      notifyDaysBefore: 0,
+      notifyTime: "12:00",
+      lastDoneAt: "2026-06-25",
+      nextDueAt: "2026-07-02",
+      memo: null,
+      isActive: true,
+      createdAt: "2026-06-25T00:00:00.000Z",
+      updatedAt: "2026-06-25T00:00:00.000Z",
+    };
+    render(
+      <ItemFormPage initialItem={initialItem} defaultNotifyTime="20:30" onSubmit={vi.fn()} onCancel={vi.fn()} />,
+    );
+
+    expect(screen.getByLabelText("通知時刻")).toHaveValue("12:00");
+  });
+
   it("offers existing categories as datalist suggestions", () => {
     render(
       <ItemFormPage categories={["掃除機", "洗濯機"]} onSubmit={vi.fn()} onCancel={vi.fn()} />,

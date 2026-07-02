@@ -2,12 +2,14 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { DEFAULT_SNOOZE_DAYS } from "@maintenance-reminder/shared";
 import * as itemsDb from "../db/queries.js";
+import { getConfigValue } from "../db/appConfig.js";
 import { addDaysToDateString, todayJstDateString } from "../lib/date.js";
 import { badRequest, notFound } from "../lib/errors.js";
+import { DEFAULT_NOTIFY_TIME_KEY } from "../lib/configKeys.js";
 import type { HonoEnv } from "../types.js";
 
-const NOTIFY_TIME_REGEX = /^([01]\d|2[0-3]):(00|30)$/;
-const DEFAULT_NOTIFY_TIME = "07:00";
+export const NOTIFY_TIME_REGEX = /^([01]\d|2[0-3]):(00|30)$/;
+export const DEFAULT_NOTIFY_TIME = "07:00";
 
 const createItemSchema = z.object({
   name: z.string().min(1).max(200),
@@ -49,13 +51,15 @@ itemsRouter.post("/", async (c) => {
   if (!parsed.success) throw badRequest(parsed.error.message);
   const input = parsed.data;
   const lastDoneAt = input.lastDoneAt ?? todayJstDateString();
+  const notifyTime =
+    input.notifyTime ?? (await getConfigValue(c.env.DB, DEFAULT_NOTIFY_TIME_KEY)) ?? DEFAULT_NOTIFY_TIME;
   const item = await itemsDb.createItem(c.env.DB, {
     id: crypto.randomUUID(),
     name: input.name,
     category: input.category ?? null,
     intervalDays: input.intervalDays,
     notifyDaysBefore: input.notifyDaysBefore ?? 0,
-    notifyTime: input.notifyTime ?? DEFAULT_NOTIFY_TIME,
+    notifyTime,
     memo: input.memo ?? null,
     lastDoneAt,
     nextDueAt: addDaysToDateString(lastDoneAt, input.intervalDays),

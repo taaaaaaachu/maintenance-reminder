@@ -7,6 +7,8 @@ import { sendToRecipient } from "../notifications/dispatcher.js";
 import { getOrCreateIcsFeedToken, regenerateIcsFeedToken } from "../ics/token.js";
 import { getConfigValue, setConfigValue } from "../db/appConfig.js";
 import { badRequest, notFound } from "../lib/errors.js";
+import { DEFAULT_NOTIFY_TIME_KEY, LINE_INVITE_URL_KEY } from "../lib/configKeys.js";
+import { DEFAULT_NOTIFY_TIME, NOTIFY_TIME_REGEX } from "./items.js";
 import type { HonoEnv } from "../types.js";
 
 const RECIPIENT_IDENTIFIER_SCHEMAS: Record<NotificationChannel, z.ZodType<string>> = {
@@ -28,7 +30,9 @@ const lineInviteSchema = z.object({
   url: z.string().url(),
 });
 
-const LINE_INVITE_URL_KEY = "line_invite_url";
+const defaultNotifyTimeSchema = z.object({
+  time: z.string().regex(NOTIFY_TIME_REGEX, "HH:00またはHH:30の形式で指定してください"),
+});
 
 function isNotificationChannel(value: string): value is NotificationChannel {
   return (NOTIFICATION_CHANNELS as readonly string[]).includes(value);
@@ -115,6 +119,19 @@ settingsRouter.get("/ics-feed", async (c) => {
 settingsRouter.post("/ics-feed/regenerate", async (c) => {
   const token = await regenerateIcsFeedToken(c.env.DB);
   return c.json({ token });
+});
+
+settingsRouter.get("/default-notify-time", async (c) => {
+  const time = (await getConfigValue(c.env.DB, DEFAULT_NOTIFY_TIME_KEY)) ?? DEFAULT_NOTIFY_TIME;
+  return c.json({ time });
+});
+
+settingsRouter.put("/default-notify-time", async (c) => {
+  const parsed = defaultNotifyTimeSchema.safeParse(await c.req.json());
+  if (!parsed.success) throw badRequest(parsed.error.message);
+
+  await setConfigValue(c.env.DB, DEFAULT_NOTIFY_TIME_KEY, parsed.data.time);
+  return c.json({ time: parsed.data.time });
 });
 
 settingsRouter.get("/line-invite", async (c) => {

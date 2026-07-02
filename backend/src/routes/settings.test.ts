@@ -173,6 +173,35 @@ describe("POST /api/settings/ics-feed/regenerate", () => {
   });
 });
 
+describe("GET/PUT /api/settings/default-notify-time", () => {
+  it("returns 07:00 when not yet configured", async () => {
+    const res = await exports.default.fetch(`${BASE_URL}/api/settings/default-notify-time`);
+    expect(await res.json()).toEqual({ time: "07:00" });
+  });
+
+  it("saves and returns the configured default", async () => {
+    const putRes = await exports.default.fetch(`${BASE_URL}/api/settings/default-notify-time`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ time: "20:30" }),
+    });
+    expect(putRes.status).toBe(200);
+    expect(await putRes.json()).toEqual({ time: "20:30" });
+
+    const getRes = await exports.default.fetch(`${BASE_URL}/api/settings/default-notify-time`);
+    expect(await getRes.json()).toEqual({ time: "20:30" });
+  });
+
+  it("rejects a time that is not on a 30-minute boundary", async () => {
+    const res = await exports.default.fetch(`${BASE_URL}/api/settings/default-notify-time`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ time: "07:15" }),
+    });
+    expect(res.status).toBe(400);
+  });
+});
+
 describe("GET/PUT /api/settings/line-invite", () => {
   it("returns null when not yet configured", async () => {
     const res = await exports.default.fetch(`${BASE_URL}/api/settings/line-invite`);

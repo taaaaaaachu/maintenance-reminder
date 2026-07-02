@@ -2,6 +2,7 @@ import type {
   AddNotificationRecipientInput,
   ApiError,
   CreateItemInput,
+  DefaultNotifyTime,
   IcsFeedToken,
   Item,
   LineInviteUrl,
@@ -99,4 +100,12 @@ export function updateLineInviteUrl(url: string): Promise<LineInviteUrl> {
 
 export function listNotificationLog(limit = 50): Promise<NotificationLogEntry[]> {
   return request(`/notification-log?limit=${limit}`);
+}
+
+export function getDefaultNotifyTime(): Promise<DefaultNotifyTime> {
+  return request("/settings/default-notify-time");
+}
+
+export function updateDefaultNotifyTime(time: string): Promise<DefaultNotifyTime> {
+  return request("/settings/default-notify-time", { method: "PUT", body: JSON.stringify({ time }) });
 }

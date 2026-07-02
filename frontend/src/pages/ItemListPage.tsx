@@ -16,6 +16,10 @@ export function ItemListPage({ highlightItemId }: ItemListPageProps) {
   const [categoryFilter, setCategoryFilter] = useState("");
 
   const itemsQuery = useQuery({ queryKey: ["items"], queryFn: () => api.listItems() });
+  const defaultNotifyTimeQuery = useQuery({
+    queryKey: ["defaultNotifyTime"],
+    queryFn: api.getDefaultNotifyTime,
+  });
   const items = itemsQuery.data ?? [];
   const categories = useMemo(
     () => Array.from(new Set(items.map((item) => item.category).filter((c): c is string => !!c))).sort(),
@@ -110,6 +114,7 @@ export function ItemListPage({ highlightItemId }: ItemListPageProps) {
       {isAdding && (
         <ItemFormPage
           categories={categories}
+          defaultNotifyTime={defaultNotifyTimeQuery.data?.time}
           onSubmit={(input) => createMutation.mutate(input as CreateItemInput)}
           onCancel={() => setIsAdding(false)}
           isSubmitting={createMutation.isPending}

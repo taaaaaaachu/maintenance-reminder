@@ -145,8 +145,9 @@ describe("ItemListPage", () => {
     await user.click(screen.getByRole("button", { name: "お手入れ完了" }));
 
     await waitFor(() => {
-      const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
-      expect(url).toBe("/api/items/item-1/complete");
+      const call = fetchMock.mock.calls.find(([url]) => url === "/api/items/item-1/complete");
+      expect(call).toBeDefined();
+      const [, init] = call as [string, RequestInit];
       expect(init.method).toBe("POST");
     });
   });
@@ -166,8 +167,9 @@ describe("ItemListPage", () => {
     await user.click(screen.getByRole("button", { name: "もうちょっといける" }));
 
     await waitFor(() => {
-      const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
-      expect(url).toBe("/api/items/item-1/snooze");
+      const call = fetchMock.mock.calls.find(([url]) => url === "/api/items/item-1/snooze");
+      expect(call).toBeDefined();
+      const [, init] = call as [string, RequestInit];
       expect(init.method).toBe("POST");
     });
   });

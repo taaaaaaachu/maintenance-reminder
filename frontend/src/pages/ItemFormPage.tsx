@@ -1,26 +1,29 @@
 import { useState, type FormEvent } from "react";
 import type { CreateItemInput, Item, UpdateItemInput } from "@maintenance-reminder/shared";
-
-const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
-  const hour = String(Math.floor(i / 2)).padStart(2, "0");
-  const minute = i % 2 === 0 ? "00" : "30";
-  return `${hour}:${minute}`;
-});
+import { TIME_OPTIONS } from "../lib/timeOptions.js";
 
 interface ItemFormPageProps {
   initialItem?: Item;
   categories?: string[];
+  defaultNotifyTime?: string;
   onSubmit: (input: CreateItemInput | UpdateItemInput) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
 }
 
-export function ItemFormPage({ initialItem, categories = [], onSubmit, onCancel, isSubmitting }: ItemFormPageProps) {
+export function ItemFormPage({
+  initialItem,
+  categories = [],
+  defaultNotifyTime = "07:00",
+  onSubmit,
+  onCancel,
+  isSubmitting,
+}: ItemFormPageProps) {
   const [name, setName] = useState(initialItem?.name ?? "");
   const [category, setCategory] = useState(initialItem?.category ?? "");
   const [intervalDays, setIntervalDays] = useState(initialItem?.intervalDays ?? 30);
   const [notifyDaysBefore, setNotifyDaysBefore] = useState(initialItem?.notifyDaysBefore ?? 0);
-  const [notifyTime, setNotifyTime] = useState(initialItem?.notifyTime ?? "07:00");
+  const [notifyTime, setNotifyTime] = useState(initialItem?.notifyTime ?? defaultNotifyTime);
   const [memo, setMemo] = useState(initialItem?.memo ?? "");
   const [lastDoneAt, setLastDoneAt] = useState("");
 

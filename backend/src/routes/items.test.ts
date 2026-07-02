@@ -6,6 +6,7 @@ const BASE_URL = "https://example.com";
 
 async function clearItems() {
   await env.DB.prepare("DELETE FROM items").run();
+  await env.DB.prepare("DELETE FROM app_config").run();
 }
 
 beforeEach(async () => {
@@ -80,6 +81,17 @@ describe("POST /api/items", () => {
   it("rejects a notifyTime that isn't on a 30-minute boundary", async () => {
     const { res } = await createItem({ name: "item", intervalDays: 7, notifyTime: "20:15" });
     expect(res.status).toBe(400);
+  });
+
+  it("uses the configured default notify time when notifyTime is omitted", async () => {
+    await exports.default.fetch(`${BASE_URL}/api/settings/default-notify-time`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ time: "19:30" }),
+    });
+
+    const { json } = await createItem({ name: "item", intervalDays: 7 });
+    expect(json.notifyTime).toBe("19:30");
   });
 });
 

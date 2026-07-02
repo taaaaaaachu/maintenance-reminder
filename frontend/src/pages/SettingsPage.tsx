@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import * as api from "../api/client.js";
 import { NotificationChannelCard } from "../components/NotificationChannelCard.js";
 import { IcsFeedCard } from "../components/IcsFeedCard.js";
+import { DefaultNotifyTimeCard } from "../components/DefaultNotifyTimeCard.js";
 
 export function SettingsPage() {
   const settingsQuery = useQuery({ queryKey: ["notificationSettings"], queryFn: api.listNotificationSettings });
@@ -14,6 +15,8 @@ export function SettingsPage() {
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-bold text-slate-900">通知設定</h2>
+
+      <DefaultNotifyTimeCard />
 
       <div className="space-y-3">
         {settings.map((setting) => (
