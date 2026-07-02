@@ -1,0 +1,17 @@
+# backend/.dev.vars としてコピーし、各値を実際のキーに置き換えてください。
+# .dev.vars は .gitignore で除外されているため、リポジトリにはコミットされません。
+
+# LINE Developersコンソール > Messaging API設定 で発行される「チャネルアクセストークン」
+LINE_CHANNEL_ACCESS_TOKEN=
+
+# LINE Developersコンソール > チャネル基本設定 で発行される「チャネルシークレット」
+LINE_CHANNEL_SECRET=
+
+# Resend (https://resend.com) ダッシュボードで発行するAPI Key
+RESEND_API_KEY=
+
+# 送信元メールアドレス。Resendでドメイン認証(SPF/DKIM)済みのアドレスを指定
+RESEND_FROM_ADDRESS=reminder@example.com
+
+# Pushover (https://pushover.net) でアプリ登録して発行されるAPI Token
+PUSHOVER_API_TOKEN=
