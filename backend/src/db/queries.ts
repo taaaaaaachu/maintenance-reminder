@@ -6,6 +6,7 @@ interface ItemRow {
   name: string;
   category: string | null;
   interval_days: number;
+  notify_days_before: number;
   last_done_at: string | null;
   next_due_at: string;
   memo: string | null;
@@ -20,6 +21,7 @@ function rowToItem(row: ItemRow): Item {
     name: row.name,
     category: row.category,
     intervalDays: row.interval_days,
+    notifyDaysBefore: row.notify_days_before,
     lastDoneAt: row.last_done_at,
     nextDueAt: row.next_due_at,
     memo: row.memo,
@@ -44,7 +46,11 @@ export async function getItem(db: D1Database, id: string): Promise<Item | null> 
 
 export async function listDueItems(db: D1Database, today: string): Promise<Item[]> {
   const { results } = await db
-    .prepare("SELECT * FROM items WHERE is_active = 1 AND next_due_at <= ? ORDER BY next_due_at ASC")
+    .prepare(
+      `SELECT * FROM items
+       WHERE is_active = 1 AND date(next_due_at, '-' || notify_days_before || ' days') <= ?
+       ORDER BY next_due_at ASC`,
+    )
     .bind(today)
     .all<ItemRow>();
   return results.map(rowToItem);
@@ -55,6 +61,7 @@ export interface CreateItemParams {
   name: string;
   category: string | null;
   intervalDays: number;
+  notifyDaysBefore: number;
   memo: string | null;
   lastDoneAt: string;
   nextDueAt: string;
@@ -64,14 +71,15 @@ export async function createItem(db: D1Database, input: CreateItemParams): Promi
   const now = new Date().toISOString();
   await db
     .prepare(
-      `INSERT INTO items (id, name, category, interval_days, last_done_at, next_due_at, memo, is_active, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      `INSERT INTO items (id, name, category, interval_days, notify_days_before, last_done_at, next_due_at, memo, is_active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
     )
     .bind(
       input.id,
       input.name,
       input.category,
       input.intervalDays,
+      input.notifyDaysBefore,
       input.lastDoneAt,
       input.nextDueAt,
       input.memo,
@@ -88,6 +96,7 @@ export interface UpdateItemParams {
   name?: string;
   category?: string | null;
   intervalDays?: number;
+  notifyDaysBefore?: number;
   memo?: string | null;
   isActive?: boolean;
 }
@@ -107,6 +116,10 @@ export async function updateItem(db: D1Database, id: string, input: UpdateItemPa
   if (input.intervalDays !== undefined) {
     sets.push("interval_days = ?");
     values.push(input.intervalDays);
+  }
+  if (input.notifyDaysBefore !== undefined) {
+    sets.push("notify_days_before = ?");
+    values.push(input.notifyDaysBefore);
   }
   if (input.memo !== undefined) {
     sets.push("memo = ?");

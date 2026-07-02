@@ -83,7 +83,7 @@ export function NotificationChannelCard({ setting }: NotificationChannelCardProp
           }}
           className="mt-3 flex flex-wrap items-end gap-2"
         >
-          <label className="block text-sm">
+          <label className="block min-w-[160px] flex-1 text-sm">
             <span className="text-slate-600">{RECIPIENT_FIELD_LABEL[setting.channel]}</span>
             <input
               type={setting.channel === "email" ? "email" : "text"}
@@ -93,7 +93,7 @@ export function NotificationChannelCard({ setting }: NotificationChannelCardProp
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
             />
           </label>
-          <label className="block text-sm">
+          <label className="block min-w-[120px] flex-1 text-sm">
             <span className="text-slate-600">表示名(任意)</span>
             <input
               type="text"

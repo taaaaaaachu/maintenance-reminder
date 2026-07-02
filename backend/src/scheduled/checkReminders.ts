@@ -2,10 +2,14 @@ import * as itemsDb from "../db/queries.js";
 import * as notificationsDb from "../db/notifications.js";
 import { sendToRecipient } from "../notifications/dispatcher.js";
 import { buildReminderMessage } from "../notifications/templates.js";
-import { jstDateStringToUtcStartIso, todayJstDateString } from "../lib/date.js";
+import { getNotificationTime } from "../notifications/scheduleConfig.js";
+import { currentJstTimeString, jstDateStringToUtcStartIso, todayJstDateString } from "../lib/date.js";
 import type { AppBindings } from "../types.js";
 
 export async function checkReminders(env: AppBindings): Promise<void> {
+  const configuredTime = await getNotificationTime(env.DB);
+  if (currentJstTimeString() !== configuredTime) return;
+
   const today = todayJstDateString();
   const sinceIso = jstDateStringToUtcStartIso(today);
 
@@ -31,7 +35,7 @@ export async function checkReminders(env: AppBindings): Promise<void> {
             );
             if (alreadySent) return;
 
-            const message = buildReminderMessage(item);
+            const message = buildReminderMessage(item, today);
             try {
               await sendToRecipient(env, channel, recipient.identifier, message);
               await notificationsDb.recordNotificationLog(env.DB, {

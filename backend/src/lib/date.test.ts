@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { addDaysToDateString, jstDateStringToUtcStartIso, todayJstDateString } from "./date.js";
+import {
+  addDaysToDateString,
+  currentJstTimeString,
+  daysBetweenDateStrings,
+  jstDateStringToUtcStartIso,
+  todayJstDateString,
+} from "./date.js";
 
 describe("addDaysToDateString", () => {
   it("adds days within the same month", () => {
@@ -42,5 +48,35 @@ describe("todayJstDateString", () => {
 describe("jstDateStringToUtcStartIso", () => {
   it("converts JST midnight to the equivalent UTC instant (9 hours earlier)", () => {
     expect(jstDateStringToUtcStartIso("2026-07-02")).toBe("2026-07-01T15:00:00.000Z");
+  });
+});
+
+describe("daysBetweenDateStrings", () => {
+  it("returns 0 for the same date", () => {
+    expect(daysBetweenDateStrings("2026-07-02", "2026-07-02")).toBe(0);
+  });
+
+  it("returns a positive number when the second date is later", () => {
+    expect(daysBetweenDateStrings("2026-07-02", "2026-07-10")).toBe(8);
+  });
+
+  it("returns a negative number when the second date is earlier", () => {
+    expect(daysBetweenDateStrings("2026-07-10", "2026-07-02")).toBe(-8);
+  });
+});
+
+describe("currentJstTimeString", () => {
+  it("formats the current JST time as HH:MM", () => {
+    // 2026-07-01T22:15:00Z is 2026-07-02 07:15 in JST
+    vi.setSystemTime(new Date("2026-07-01T22:15:00Z"));
+    expect(currentJstTimeString()).toBe("07:15");
+    vi.useRealTimers();
+  });
+
+  it("pads single-digit hours and minutes", () => {
+    // 2026-07-01T20:05:00Z is 2026-07-02 05:05 in JST
+    vi.setSystemTime(new Date("2026-07-01T20:05:00Z"));
+    expect(currentJstTimeString()).toBe("05:05");
+    vi.useRealTimers();
   });
 });

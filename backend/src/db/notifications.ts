@@ -1,5 +1,10 @@
 import { NOTIFICATION_CHANNELS } from "@maintenance-reminder/shared";
-import type { NotificationChannel, NotificationRecipient, NotificationSetting } from "@maintenance-reminder/shared";
+import type {
+  NotificationChannel,
+  NotificationLogEntry,
+  NotificationRecipient,
+  NotificationSetting,
+} from "@maintenance-reminder/shared";
 
 interface NotificationSettingRow {
   channel: string;
@@ -119,6 +124,46 @@ export async function recordNotificationLog(db: D1Database, params: RecordNotifi
       new Date().toISOString(),
     )
     .run();
+}
+
+interface NotificationLogRow {
+  id: number;
+  item_id: string;
+  item_name: string | null;
+  channel: string;
+  recipient_identifier: string;
+  recipient_label: string | null;
+  status: string;
+  error_message: string | null;
+  sent_at: string;
+}
+
+export async function listNotificationLog(db: D1Database, limit: number): Promise<NotificationLogEntry[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT
+         nl.id, nl.item_id, i.name AS item_name, nl.channel, nl.recipient_identifier,
+         nr.label AS recipient_label, nl.status, nl.error_message, nl.sent_at
+       FROM notification_log nl
+       LEFT JOIN items i ON i.id = nl.item_id
+       LEFT JOIN notification_recipients nr ON nr.channel = nl.channel AND nr.identifier = nl.recipient_identifier
+       ORDER BY nl.sent_at DESC
+       LIMIT ?`,
+    )
+    .bind(limit)
+    .all<NotificationLogRow>();
+
+  return results.map((row) => ({
+    id: row.id,
+    itemId: row.item_id,
+    itemName: row.item_name,
+    channel: row.channel as NotificationChannel,
+    recipientIdentifier: row.recipient_identifier,
+    recipientLabel: row.recipient_label,
+    status: row.status as "success" | "failed",
+    errorMessage: row.error_message,
+    sentAt: row.sent_at,
+  }));
 }
 
 export async function hasSuccessfulNotificationSince(

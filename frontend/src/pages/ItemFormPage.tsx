@@ -12,6 +12,7 @@ export function ItemFormPage({ initialItem, onSubmit, onCancel, isSubmitting }: 
   const [name, setName] = useState(initialItem?.name ?? "");
   const [category, setCategory] = useState(initialItem?.category ?? "");
   const [intervalDays, setIntervalDays] = useState(initialItem?.intervalDays ?? 30);
+  const [notifyDaysBefore, setNotifyDaysBefore] = useState(initialItem?.notifyDaysBefore ?? 0);
   const [memo, setMemo] = useState(initialItem?.memo ?? "");
   const [lastDoneAt, setLastDoneAt] = useState("");
 
@@ -22,6 +23,7 @@ export function ItemFormPage({ initialItem, onSubmit, onCancel, isSubmitting }: 
         name,
         category: category || null,
         intervalDays,
+        notifyDaysBefore,
         memo: memo || null,
       });
     } else {
@@ -29,6 +31,7 @@ export function ItemFormPage({ initialItem, onSubmit, onCancel, isSubmitting }: 
         name,
         category: category || null,
         intervalDays,
+        notifyDaysBefore,
         memo: memo || null,
         lastDoneAt: lastDoneAt || undefined,
       });
@@ -74,6 +77,21 @@ export function ItemFormPage({ initialItem, onSubmit, onCancel, isSubmitting }: 
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
           />
         </label>
+
+        <div>
+          <label className="block text-sm">
+            <span className="text-slate-600">何日前から通知するか</span>
+            <input
+              type="number"
+              required
+              min={0}
+              value={notifyDaysBefore}
+              onChange={(e) => setNotifyDaysBefore(Number(e.target.value))}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </label>
+          <span className="mt-1 block text-xs text-slate-400">0なら予定日当日から通知します</span>
+        </div>
 
         <label className="block text-sm">
           <span className="text-slate-600">メモ(任意)</span>

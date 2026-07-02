@@ -2,12 +2,14 @@ import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as itemsDb from "../db/queries.js";
 import * as notificationsDb from "../db/notifications.js";
+import { setNotificationTime } from "../notifications/scheduleConfig.js";
 import { checkReminders } from "./checkReminders.js";
 
 async function clearAll() {
   await env.DB.prepare("DELETE FROM notification_log").run();
   await env.DB.prepare("DELETE FROM notification_recipients").run();
   await env.DB.prepare("DELETE FROM notification_settings").run();
+  await env.DB.prepare("DELETE FROM app_config").run();
   await env.DB.prepare("DELETE FROM items").run();
 }
 
@@ -18,7 +20,8 @@ beforeEach(async () => {
   fetchMock.mockReset();
   fetchMock.mockResolvedValue(new Response("ok", { status: 200 }));
   vi.stubGlobal("fetch", fetchMock);
-  vi.setSystemTime(new Date("2026-07-02T03:00:00Z"));
+  // 2026-07-01T22:00:00Z is 2026-07-02 07:00 JST, matching the default notification time.
+  vi.setSystemTime(new Date("2026-07-01T22:00:00Z"));
 });
 
 afterEach(() => {
@@ -33,6 +36,7 @@ describe("checkReminders", () => {
       name: "ロボット掃除機の清掃",
       category: null,
       intervalDays: 7,
+      notifyDaysBefore: 0,
       memo: null,
       lastDoneAt: "2026-06-25",
       nextDueAt: "2026-07-02",
@@ -58,6 +62,7 @@ describe("checkReminders", () => {
       name: "洗濯機の掃除",
       category: null,
       intervalDays: 7,
+      notifyDaysBefore: 0,
       memo: null,
       lastDoneAt: "2026-06-25",
       nextDueAt: "2026-07-02",
@@ -77,6 +82,7 @@ describe("checkReminders", () => {
       name: "加湿器の掃除",
       category: null,
       intervalDays: 30,
+      notifyDaysBefore: 0,
       memo: null,
       lastDoneAt: "2026-07-01",
       nextDueAt: "2026-07-31",
@@ -89,12 +95,32 @@ describe("checkReminders", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("includes items whose notify_days_before lead time has started", async () => {
+    await itemsDb.createItem(env.DB, {
+      id: "lead-time",
+      name: "エアコンフィルター清掃",
+      category: null,
+      intervalDays: 30,
+      notifyDaysBefore: 5,
+      memo: null,
+      lastDoneAt: "2026-07-01",
+      nextDueAt: "2026-07-05",
+    });
+    await notificationsDb.setNotificationEnabled(env.DB, "pushover", true);
+    await notificationsDb.addRecipient(env.DB, "pushover", "user-key-1", null);
+
+    await checkReminders(env);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("skips channels that are not enabled even if recipients are registered", async () => {
     await itemsDb.createItem(env.DB, {
       id: "due-3",
       name: "加湿器の掃除",
       category: null,
       intervalDays: 7,
+      notifyDaysBefore: 0,
       memo: null,
       lastDoneAt: "2026-06-25",
       nextDueAt: "2026-07-02",
@@ -114,6 +140,7 @@ describe("checkReminders", () => {
       name: "加湿器の掃除",
       category: null,
       intervalDays: 7,
+      notifyDaysBefore: 0,
       memo: null,
       lastDoneAt: "2026-06-25",
       nextDueAt: "2026-07-02",
@@ -133,5 +160,25 @@ describe("checkReminders", () => {
       .bind(item.id)
       .all();
     expect(results).toHaveLength(1);
+  });
+
+  it("does nothing when the current time does not match the configured notification time", async () => {
+    await setNotificationTime(env.DB, "20:00");
+    await itemsDb.createItem(env.DB, {
+      id: "due-5",
+      name: "加湿器の掃除",
+      category: null,
+      intervalDays: 7,
+      notifyDaysBefore: 0,
+      memo: null,
+      lastDoneAt: "2026-06-25",
+      nextDueAt: "2026-07-02",
+    });
+    await notificationsDb.setNotificationEnabled(env.DB, "pushover", true);
+    await notificationsDb.addRecipient(env.DB, "pushover", "user-key-1", null);
+
+    await checkReminders(env);
+
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

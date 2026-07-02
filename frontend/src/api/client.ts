@@ -6,8 +6,10 @@ import type {
   Item,
   LineInviteUrl,
   NotificationChannel,
+  NotificationLogEntry,
   NotificationRecipient,
   NotificationSetting,
+  NotificationTime,
   SnoozeItemInput,
   UpdateItemInput,
   UpdateNotificationSettingInput,
@@ -94,4 +96,16 @@ export function getLineInviteUrl(): Promise<LineInviteUrl> {
 
 export function updateLineInviteUrl(url: string): Promise<LineInviteUrl> {
   return request("/settings/line-invite", { method: "PUT", body: JSON.stringify({ url }) });
+}
+
+export function getNotificationTime(): Promise<NotificationTime> {
+  return request("/settings/notification-time");
+}
+
+export function updateNotificationTime(time: string): Promise<NotificationTime> {
+  return request("/settings/notification-time", { method: "PUT", body: JSON.stringify({ time }) });
+}
+
+export function listNotificationLog(limit = 50): Promise<NotificationLogEntry[]> {
+  return request(`/notification-log?limit=${limit}`);
 }

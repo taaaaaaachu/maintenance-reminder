@@ -5,6 +5,7 @@ export interface Item {
   name: string;
   category: string | null;
   intervalDays: number;
+  notifyDaysBefore: number;
   lastDoneAt: string | null;
   nextDueAt: string;
   memo: string | null;
@@ -17,6 +18,7 @@ export interface CreateItemInput {
   name: string;
   category?: string | null;
   intervalDays: number;
+  notifyDaysBefore?: number;
   memo?: string | null;
   lastDoneAt?: string;
 }
@@ -25,6 +27,7 @@ export interface UpdateItemInput {
   name?: string;
   category?: string | null;
   intervalDays?: number;
+  notifyDaysBefore?: number;
   memo?: string | null;
   isActive?: boolean;
 }
@@ -70,4 +73,20 @@ export interface IcsFeedToken {
 
 export interface LineInviteUrl {
   url: string | null;
+}
+
+export interface NotificationTime {
+  time: string;
+}
+
+export interface NotificationLogEntry {
+  id: number;
+  itemId: string;
+  itemName: string | null;
+  channel: NotificationChannel;
+  recipientIdentifier: string;
+  recipientLabel: string | null;
+  status: "success" | "failed";
+  errorMessage: string | null;
+  sentAt: string;
 }

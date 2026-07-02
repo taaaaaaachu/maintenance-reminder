@@ -10,6 +10,7 @@ const createItemSchema = z.object({
   name: z.string().min(1).max(200),
   category: z.string().max(100).nullable().optional(),
   intervalDays: z.number().int().positive(),
+  notifyDaysBefore: z.number().int().min(0).optional(),
   memo: z.string().max(2000).nullable().optional(),
   lastDoneAt: z
     .string()
@@ -21,6 +22,7 @@ const updateItemSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   category: z.string().max(100).nullable().optional(),
   intervalDays: z.number().int().positive().optional(),
+  notifyDaysBefore: z.number().int().min(0).optional(),
   memo: z.string().max(2000).nullable().optional(),
   isActive: z.boolean().optional(),
 });
@@ -47,6 +49,7 @@ itemsRouter.post("/", async (c) => {
     name: input.name,
     category: input.category ?? null,
     intervalDays: input.intervalDays,
+    notifyDaysBefore: input.notifyDaysBefore ?? 0,
     memo: input.memo ?? null,
     lastDoneAt,
     nextDueAt: addDaysToDateString(lastDoneAt, input.intervalDays),

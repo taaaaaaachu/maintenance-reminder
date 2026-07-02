@@ -8,6 +8,7 @@ function makeItem(overrides: Partial<Item> = {}): Item {
     name: "ロボット掃除機のダストボックス清掃",
     category: null,
     intervalDays: 7,
+    notifyDaysBefore: 0,
     lastDoneAt: "2026-06-25",
     nextDueAt: "2026-07-02",
     memo: null,
@@ -20,10 +21,41 @@ function makeItem(overrides: Partial<Item> = {}): Item {
 
 describe("buildReminderMessage", () => {
   it("includes the item name in the title and the due date in the body", () => {
-    const message = buildReminderMessage(makeItem());
+    const message = buildReminderMessage(makeItem(), "2026-07-02");
 
     expect(message.title).toContain("ロボット掃除機のダストボックス清掃");
     expect(message.body).toContain("ロボット掃除機のダストボックス清掃");
     expect(message.body).toContain("2026-07-02");
+  });
+
+  it("uses a pre-notice tone and emoji when notified before the due date", () => {
+    const message = buildReminderMessage(makeItem({ nextDueAt: "2026-07-05" }), "2026-07-02");
+
+    expect(message.title).toContain("📅");
+    expect(message.title).toContain("あと3日");
+    expect(message.body).toContain("近づいています");
+  });
+
+  it("uses a 本日 tone and emoji when due today", () => {
+    const message = buildReminderMessage(makeItem({ nextDueAt: "2026-07-02" }), "2026-07-02");
+
+    expect(message.title).toContain("🔔");
+    expect(message.title).toContain("本日");
+  });
+
+  it("uses a mild warning tone within 3 days overdue", () => {
+    const message = buildReminderMessage(makeItem({ nextDueAt: "2026-06-30" }), "2026-07-02");
+
+    expect(message.title).toContain("⚠️");
+    expect(message.title).toContain("2日経過");
+    expect(message.body).toContain("そろそろ");
+  });
+
+  it("uses a strong warning tone when overdue by more than 3 days", () => {
+    const message = buildReminderMessage(makeItem({ nextDueAt: "2026-06-20" }), "2026-07-02");
+
+    expect(message.title).toContain("🚨");
+    expect(message.title).toContain("12日超過");
+    expect(message.body).toContain("早めのお手入れをお願いします");
   });
 });

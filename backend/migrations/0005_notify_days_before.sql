@@ -1,0 +1,1 @@
+ALTER TABLE items ADD COLUMN notify_days_before INTEGER NOT NULL DEFAULT 0;

@@ -12,6 +12,7 @@ function makeCreateParams(overrides: Partial<queries.CreateItemParams> = {}): qu
     name: "ロボット掃除機のダストボックス清掃",
     category: "掃除機",
     intervalDays: 7,
+    notifyDaysBefore: 0,
     memo: null,
     lastDoneAt: "2026-07-01",
     nextDueAt: "2026-07-08",
@@ -81,6 +82,21 @@ describe("listDueItems", () => {
     const items = await queries.listDueItems(env.DB, "2026-07-02");
 
     expect(items.map((i) => i.id)).toEqual(["overdue", "due-today"]);
+  });
+
+  it("includes items whose lead-time window (notify_days_before) has started even if not yet due", async () => {
+    await queries.createItem(
+      env.DB,
+      makeCreateParams({ id: "early-notice", nextDueAt: "2026-07-05", notifyDaysBefore: 3 }),
+    );
+    await queries.createItem(
+      env.DB,
+      makeCreateParams({ id: "too-early", nextDueAt: "2026-07-10", notifyDaysBefore: 3 }),
+    );
+
+    const items = await queries.listDueItems(env.DB, "2026-07-02");
+
+    expect(items.map((i) => i.id)).toEqual(["early-notice"]);
   });
 });
 

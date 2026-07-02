@@ -8,6 +8,7 @@ function makeItem(overrides: Partial<Item> = {}): Item {
     name: "ロボット掃除機の清掃",
     category: null,
     intervalDays: 7,
+    notifyDaysBefore: 0,
     lastDoneAt: "2026-06-25",
     nextDueAt: "2026-07-02",
     memo: null,

@@ -4,6 +4,7 @@ import { itemsRouter } from "./routes/items.js";
 import { settingsRouter } from "./routes/settings.js";
 import { feedRouter } from "./routes/feed.js";
 import { webhookRouter } from "./routes/webhook.js";
+import { notificationLogRouter } from "./routes/notificationLog.js";
 import { HttpError } from "./lib/errors.js";
 import type { HonoEnv } from "./types.js";
 
@@ -11,6 +12,7 @@ export const app = new Hono<HonoEnv>();
 
 app.route("/api/items", itemsRouter);
 app.route("/api/settings", settingsRouter);
+app.route("/api/notification-log", notificationLogRouter);
 app.route("/feed", feedRouter);
 app.route("/webhook", webhookRouter);
 

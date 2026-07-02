@@ -19,7 +19,7 @@ database_name = "maintenance-reminder-db"
 database_id = "d298b465-997d-471e-9f76-439135b9e758"
 
 [triggers]
-crons = ["0 22 * * *"]
+crons = ["*/30 * * * *"]
 
 [vars]
 RESEND_FROM_ADDRESS = "reminder@example.com"
