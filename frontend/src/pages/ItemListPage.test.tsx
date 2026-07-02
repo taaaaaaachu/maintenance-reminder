@@ -232,6 +232,33 @@ describe("ItemListPage", () => {
     expect(screen.queryByText("洗濯機のフィルター掃除")).not.toBeInTheDocument();
   });
 
+  it("filters items to overdue-only using the checkbox", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          makeItem({ id: "item-1", name: "ロボット掃除機の清掃", nextDueAt: "2026-06-25" }),
+          makeItem({ id: "item-2", name: "洗濯機のフィルター掃除", nextDueAt: "2026-07-10" }),
+        ]),
+        { status: 200 },
+      ),
+    );
+    const user = userEvent.setup();
+
+    renderWithClient();
+    await waitFor(() => {
+      expect(screen.getByText("ロボット掃除機の清掃")).toBeInTheDocument();
+      expect(screen.getByText("洗濯機のフィルター掃除")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByLabelText("期限切れのみ表示"));
+
+    expect(screen.getByText("ロボット掃除機の清掃")).toBeInTheDocument();
+    expect(screen.queryByText("洗濯機のフィルター掃除")).not.toBeInTheDocument();
+
+    await user.click(screen.getByLabelText("期限切れのみ表示"));
+    expect(screen.getByText("洗濯機のフィルター掃除")).toBeInTheDocument();
+  });
+
   it("scrolls to and highlights the item matching highlightItemId", async () => {
     fetchMock.mockResolvedValue(
       new Response(

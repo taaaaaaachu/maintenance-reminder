@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CreateItemInput, Item, UpdateItemInput } from "@maintenance-reminder/shared";
 import * as api from "../api/client.js";
 import { ItemCard } from "../components/ItemCard.js";
+import { daysUntil } from "../components/dueStatus.js";
 import { ItemFormPage } from "./ItemFormPage.js";
 
 interface ItemListPageProps {
@@ -14,6 +15,7 @@ export function ItemListPage({ highlightItemId }: ItemListPageProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [overdueOnly, setOverdueOnly] = useState(false);
 
   const itemsQuery = useQuery({ queryKey: ["items"], queryFn: () => api.listItems() });
   const defaultNotifyTimeQuery = useQuery({
@@ -27,7 +29,10 @@ export function ItemListPage({ highlightItemId }: ItemListPageProps) {
   );
 
   useEffect(() => {
-    if (highlightItemId) setCategoryFilter("");
+    if (highlightItemId) {
+      setCategoryFilter("");
+      setOverdueOnly(false);
+    }
   }, [highlightItemId]);
 
   useEffect(() => {
@@ -73,7 +78,9 @@ export function ItemListPage({ highlightItemId }: ItemListPageProps) {
   if (itemsQuery.isLoading) return <p className="text-slate-500">読み込み中...</p>;
   if (itemsQuery.isError) return <p className="text-red-600">読み込みに失敗しました: {String(itemsQuery.error)}</p>;
 
-  const filteredItems = categoryFilter ? items.filter((item) => item.category === categoryFilter) : items;
+  const filteredItems = items
+    .filter((item) => !categoryFilter || item.category === categoryFilter)
+    .filter((item) => !overdueOnly || daysUntil(item.nextDueAt) < 0);
 
   return (
     <div className="space-y-4">
@@ -90,24 +97,36 @@ export function ItemListPage({ highlightItemId }: ItemListPageProps) {
         )}
       </div>
 
-      {categories.length > 0 && (
-        <div className="flex items-center gap-2">
-          <label htmlFor="category-filter" className="text-sm text-slate-600">
-            ジャンルで絞り込み
+      {items.length > 0 && (
+        <div className="flex flex-wrap items-center gap-4">
+          {categories.length > 0 && (
+            <div className="flex items-center gap-2">
+              <label htmlFor="category-filter" className="text-sm text-slate-600">
+                ジャンルで絞り込み
+              </label>
+              <select
+                id="category-filter"
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+              >
+                <option value="">すべて</option>
+                {categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <input
+              type="checkbox"
+              checked={overdueOnly}
+              onChange={(e) => setOverdueOnly(e.target.checked)}
+            />
+            期限切れのみ表示
           </label>
-          <select
-            id="category-filter"
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="rounded-md border border-slate-300 px-2 py-1 text-sm"
-          >
-            <option value="">すべて</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
         </div>
       )}
 
