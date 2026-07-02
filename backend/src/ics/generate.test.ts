@@ -36,7 +36,7 @@ describe("generateIcsFeed", () => {
     expect(ics).toContain("BEGIN:VEVENT");
     expect(ics).toContain("UID:item-1@example.com");
     expect(ics).toContain("DTSTART;VALUE=DATE:20260702");
-    expect(ics).toContain("SUMMARY:ロボット掃除機の清掃のお手入れ");
+    expect(ics).toContain("SUMMARY:ロボット掃除機の清掃");
     expect(ics).toContain("END:VEVENT");
   });
 
@@ -58,6 +58,6 @@ describe("generateIcsFeed", () => {
 
   it("escapes commas, semicolons, and backslashes in text fields", () => {
     const ics = generateIcsFeed([makeItem({ name: "A;B,C\\D" })], "example.com", NOW);
-    expect(ics).toContain("SUMMARY:A\\;B\\,C\\\\Dのお手入れ");
+    expect(ics).toContain("SUMMARY:A\\;B\\,C\\\\D");
   });
 });

@@ -18,7 +18,7 @@ function buildEvent(item: Item, domain: string, now: Date): string {
     `UID:${item.id}@${domain}`,
     `DTSTAMP:${formatTimestampForIcs(now)}`,
     `DTSTART;VALUE=DATE:${formatDateForIcs(item.nextDueAt)}`,
-    `SUMMARY:${escapeIcsText(`${item.name}のお手入れ`)}`,
+    `SUMMARY:${escapeIcsText(item.name)}`,
   ];
   if (item.memo) {
     lines.push(`DESCRIPTION:${escapeIcsText(item.memo)}`);

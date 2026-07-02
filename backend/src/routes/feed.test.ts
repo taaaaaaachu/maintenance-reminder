@@ -32,7 +32,7 @@ describe("GET /feed/:token.ics", () => {
     const res = await exports.default.fetch(`${BASE_URL}/feed/${token}.ics`);
     const body = await res.text();
 
-    expect(body).toContain("洗濯機のフィルター掃除のお手入れ");
+    expect(body).toContain("洗濯機のフィルター掃除");
   });
 
   it("returns 404 for an incorrect token", async () => {
