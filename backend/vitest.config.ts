@@ -11,7 +11,12 @@ export default defineConfig(async () => {
       cloudflareTest({
         wrangler: { configPath: "./wrangler.toml" },
         miniflare: {
-          bindings: { TEST_MIGRATIONS: migrations },
+          bindings: {
+            TEST_MIGRATIONS: migrations,
+            LINE_CHANNEL_ACCESS_TOKEN: "test-line-token",
+            RESEND_API_KEY: "test-resend-key",
+            PUSHOVER_API_TOKEN: "test-pushover-token",
+          },
         },
       }),
     ],

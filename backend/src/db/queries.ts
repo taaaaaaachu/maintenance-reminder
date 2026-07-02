@@ -42,6 +42,14 @@ export async function getItem(db: D1Database, id: string): Promise<Item | null> 
   return row ? rowToItem(row) : null;
 }
 
+export async function listDueItems(db: D1Database, today: string): Promise<Item[]> {
+  const { results } = await db
+    .prepare("SELECT * FROM items WHERE is_active = 1 AND next_due_at <= ? ORDER BY next_due_at ASC")
+    .bind(today)
+    .all<ItemRow>();
+  return results.map(rowToItem);
+}
+
 export interface CreateItemParams {
   id: string;
   name: string;

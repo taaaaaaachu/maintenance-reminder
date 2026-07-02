@@ -4,8 +4,7 @@ import { DEFAULT_SNOOZE_DAYS } from "@maintenance-reminder/shared";
 import * as itemsDb from "../db/queries.js";
 import { addDaysToDateString, todayJstDateString } from "../lib/date.js";
 import { badRequest, notFound } from "../lib/errors.js";
-
-export type Env = { Bindings: { DB: D1Database } };
+import type { HonoEnv } from "../types.js";
 
 const createItemSchema = z.object({
   name: z.string().min(1).max(200),
@@ -30,7 +29,7 @@ const snoozeSchema = z.object({
   days: z.number().int().positive().max(365).optional(),
 });
 
-export const itemsRouter = new Hono<Env>();
+export const itemsRouter = new Hono<HonoEnv>();
 
 itemsRouter.get("/", async (c) => {
   const includeInactive = c.req.query("includeInactive") === "true";

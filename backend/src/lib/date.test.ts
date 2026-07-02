@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { addDaysToDateString, todayJstDateString } from "./date.js";
+import { addDaysToDateString, jstDateStringToUtcStartIso, todayJstDateString } from "./date.js";
 
 describe("addDaysToDateString", () => {
   it("adds days within the same month", () => {
@@ -36,5 +36,11 @@ describe("todayJstDateString", () => {
     vi.setSystemTime(new Date("2026-07-02T14:59:00Z"));
     expect(todayJstDateString()).toBe("2026-07-02");
     vi.useRealTimers();
+  });
+});
+
+describe("jstDateStringToUtcStartIso", () => {
+  it("converts JST midnight to the equivalent UTC instant (9 hours earlier)", () => {
+    expect(jstDateStringToUtcStartIso("2026-07-02")).toBe("2026-07-01T15:00:00.000Z");
   });
 });

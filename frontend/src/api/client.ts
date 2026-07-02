@@ -1,4 +1,13 @@
-import type { ApiError, CreateItemInput, Item, SnoozeItemInput, UpdateItemInput } from "@maintenance-reminder/shared";
+import type {
+  ApiError,
+  CreateItemInput,
+  Item,
+  NotificationChannel,
+  NotificationSetting,
+  SnoozeItemInput,
+  UpdateItemInput,
+  UpdateNotificationSettingInput,
+} from "@maintenance-reminder/shared";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -35,4 +44,19 @@ export function completeItem(id: string): Promise<Item> {
 
 export function snoozeItem(id: string, input: SnoozeItemInput = {}): Promise<Item> {
   return request(`/items/${id}/snooze`, { method: "POST", body: JSON.stringify(input) });
+}
+
+export function listNotificationSettings(): Promise<NotificationSetting[]> {
+  return request("/settings/notifications");
+}
+
+export function updateNotificationSetting(
+  channel: NotificationChannel,
+  input: UpdateNotificationSettingInput,
+): Promise<NotificationSetting> {
+  return request(`/settings/notifications/${channel}`, { method: "PUT", body: JSON.stringify(input) });
+}
+
+export function testNotificationSetting(channel: NotificationChannel): Promise<{ ok: boolean }> {
+  return request(`/settings/notifications/${channel}/test`, { method: "POST" });
 }

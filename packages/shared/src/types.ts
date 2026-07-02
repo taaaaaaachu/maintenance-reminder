@@ -1,3 +1,5 @@
+import type { NOTIFICATION_CHANNELS } from "./constants.js";
+
 export interface Item {
   id: string;
   name: string;
@@ -36,4 +38,17 @@ export interface ApiError {
     message: string;
     code: string;
   };
+}
+
+export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
+
+export interface NotificationSetting {
+  channel: NotificationChannel;
+  isEnabled: boolean;
+  config: Record<string, string>;
+}
+
+export interface UpdateNotificationSettingInput {
+  isEnabled: boolean;
+  config: Record<string, string>;
 }

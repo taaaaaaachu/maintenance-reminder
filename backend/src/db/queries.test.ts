@@ -70,6 +70,20 @@ describe("listItems", () => {
   });
 });
 
+describe("listDueItems", () => {
+  it("returns only active items whose next_due_at is on or before the given date", async () => {
+    await queries.createItem(env.DB, makeCreateParams({ id: "overdue", nextDueAt: "2026-06-01" }));
+    await queries.createItem(env.DB, makeCreateParams({ id: "due-today", nextDueAt: "2026-07-02" }));
+    await queries.createItem(env.DB, makeCreateParams({ id: "future", nextDueAt: "2026-07-10" }));
+    const inactive = await queries.createItem(env.DB, makeCreateParams({ id: "inactive-overdue", nextDueAt: "2026-06-01" }));
+    await queries.updateItem(env.DB, inactive.id, { isActive: false });
+
+    const items = await queries.listDueItems(env.DB, "2026-07-02");
+
+    expect(items.map((i) => i.id)).toEqual(["overdue", "due-today"]);
+  });
+});
+
 describe("updateItem", () => {
   it("updates only the provided fields and leaves others untouched", async () => {
     const created = await queries.createItem(env.DB, makeCreateParams());

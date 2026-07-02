@@ -60,4 +60,38 @@ describe("api client", () => {
 
     await expect(api.completeItem("x")).rejects.toThrow("Request failed: 500");
   });
+
+  it("listNotificationSettings requests /api/settings/notifications", async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify([{ channel: "line" }]), { status: 200 }));
+
+    const settings = await api.listNotificationSettings();
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/settings/notifications", expect.any(Object));
+    expect(settings).toEqual([{ channel: "line" }]);
+  });
+
+  it("updateNotificationSetting PUTs to the channel-specific endpoint", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ channel: "pushover", isEnabled: true, config: { userKey: "k" } }), {
+        status: 200,
+      }),
+    );
+
+    await api.updateNotificationSetting("pushover", { isEnabled: true, config: { userKey: "k" } });
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/settings/notifications/pushover");
+    expect(init.method).toBe("PUT");
+    expect(JSON.parse(init.body as string)).toEqual({ isEnabled: true, config: { userKey: "k" } });
+  });
+
+  it("testNotificationSetting POSTs to the test endpoint", async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+
+    await api.testNotificationSetting("email");
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/settings/notifications/email/test");
+    expect(init.method).toBe("POST");
+  });
 });

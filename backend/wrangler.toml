@@ -12,3 +12,9 @@ run_worker_first = ["/api/*"]
 binding = "DB"
 database_name = "maintenance-reminder-db"
 database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+[triggers]
+crons = ["0 22 * * *"]
+
+[vars]
+RESEND_FROM_ADDRESS = "reminder@your-domain.example"

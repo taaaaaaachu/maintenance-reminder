@@ -9,3 +9,7 @@ export function addDaysToDateString(dateString: string, days: number): string {
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 }
+
+export function jstDateStringToUtcStartIso(dateString: string): string {
+  return new Date(`${dateString}T00:00:00+09:00`).toISOString();
+}
