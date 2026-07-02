@@ -1,0 +1,18 @@
+{
+  "name": "maintenance-reminder",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "build:frontend": "npm run build --workspace=frontend",
+    "build:shared": "npm run build --workspace=@maintenance-reminder/shared",
+    "deploy": "npm run build:frontend && npm run deploy --workspace=backend",
+    "typecheck": "npm run typecheck --workspace=@maintenance-reminder/shared && npm run typecheck --workspace=backend && npm run typecheck --workspace=frontend",
+    "test": "npm run test --workspace=backend && npm run test --workspace=frontend"
+  }
+}
