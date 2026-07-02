@@ -4,6 +4,7 @@ import type {
   NotificationLogEntry,
   NotificationRecipient,
   NotificationSetting,
+  NotificationStatus,
 } from "@maintenance-reminder/shared";
 
 interface NotificationSettingRow {
@@ -105,7 +106,7 @@ export interface RecordNotificationLogParams {
   itemId: string;
   channel: NotificationChannel;
   recipientIdentifier: string;
-  status: "success" | "failed";
+  status: NotificationStatus;
   errorMessage?: string | null;
 }
 
@@ -160,7 +161,7 @@ export async function listNotificationLog(db: D1Database, limit: number): Promis
     channel: row.channel as NotificationChannel,
     recipientIdentifier: row.recipient_identifier,
     recipientLabel: row.recipient_label,
-    status: row.status as "success" | "failed",
+    status: row.status as NotificationStatus,
     errorMessage: row.error_message,
     sentAt: row.sent_at,
   }));

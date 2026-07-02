@@ -78,6 +78,8 @@ export interface LineInviteUrl {
   url: string | null;
 }
 
+export type NotificationStatus = "success" | "failed";
+
 export interface NotificationLogEntry {
   id: number;
   itemId: string;
@@ -85,7 +87,7 @@ export interface NotificationLogEntry {
   channel: NotificationChannel;
   recipientIdentifier: string;
   recipientLabel: string | null;
-  status: "success" | "failed";
+  status: NotificationStatus;
   errorMessage: string | null;
   sentAt: string;
 }

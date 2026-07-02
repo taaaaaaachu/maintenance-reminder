@@ -68,7 +68,7 @@ describe("NotificationChannelCard", () => {
   });
 
   it("adds a recipient via the form for email", async () => {
-    fetchMock.mockImplementation((url: string, init?: RequestInit) => {
+    fetchMock.mockImplementation((_url: string, init?: RequestInit) => {
       if (init?.method === "POST") {
         return Promise.resolve(
           new Response(JSON.stringify({ id: "r2", channel: "email", identifier: "new@example.com", label: null }), {
