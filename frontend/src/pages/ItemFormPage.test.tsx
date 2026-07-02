@@ -18,6 +18,19 @@ describe("ItemFormPage", () => {
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ notifyDaysBefore: 0, notifyTime: "07:00" }));
   });
 
+  it("offers existing categories as datalist suggestions", () => {
+    render(
+      <ItemFormPage categories={["掃除機", "洗濯機"]} onSubmit={vi.fn()} onCancel={vi.fn()} />,
+    );
+
+    const input = screen.getByLabelText("カテゴリ(任意)");
+    expect(input).toHaveAttribute("list", "category-options");
+
+    const datalist = document.getElementById("category-options") as HTMLDataListElement;
+    const options = Array.from(datalist.options).map((o) => o.value);
+    expect(options).toEqual(["掃除機", "洗濯機"]);
+  });
+
   it("submits an edited notifyDaysBefore and notifyTime value", async () => {
     const onSubmit = vi.fn();
     const user = userEvent.setup();

@@ -195,6 +195,41 @@ describe("ItemListPage", () => {
     confirmSpy.mockRestore();
   });
 
+  it("does not show a category filter when no item has a category", async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify([makeItem({ category: null })]), { status: 200 }));
+
+    renderWithClient();
+
+    await waitFor(() => {
+      expect(screen.getByText("ロボット掃除機の清掃")).toBeInTheDocument();
+    });
+    expect(screen.queryByLabelText("ジャンルで絞り込み")).not.toBeInTheDocument();
+  });
+
+  it("filters items by category using the filter select", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          makeItem({ id: "item-1", name: "ロボット掃除機の清掃", category: "掃除機" }),
+          makeItem({ id: "item-2", name: "洗濯機のフィルター掃除", category: "洗濯機" }),
+        ]),
+        { status: 200 },
+      ),
+    );
+    const user = userEvent.setup();
+
+    renderWithClient();
+    await waitFor(() => {
+      expect(screen.getByText("ロボット掃除機の清掃")).toBeInTheDocument();
+      expect(screen.getByText("洗濯機のフィルター掃除")).toBeInTheDocument();
+    });
+
+    await user.selectOptions(screen.getByLabelText("ジャンルで絞り込み"), "掃除機");
+
+    expect(screen.getByText("ロボット掃除機の清掃")).toBeInTheDocument();
+    expect(screen.queryByText("洗濯機のフィルター掃除")).not.toBeInTheDocument();
+  });
+
   it("does not delete the item when the confirm dialog is cancelled", async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify([makeItem()]), { status: 200 }));
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);

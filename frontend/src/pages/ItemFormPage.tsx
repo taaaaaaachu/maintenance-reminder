@@ -9,12 +9,13 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
 
 interface ItemFormPageProps {
   initialItem?: Item;
+  categories?: string[];
   onSubmit: (input: CreateItemInput | UpdateItemInput) => void;
   onCancel: () => void;
   isSubmitting?: boolean;
 }
 
-export function ItemFormPage({ initialItem, onSubmit, onCancel, isSubmitting }: ItemFormPageProps) {
+export function ItemFormPage({ initialItem, categories = [], onSubmit, onCancel, isSubmitting }: ItemFormPageProps) {
   const [name, setName] = useState(initialItem?.name ?? "");
   const [category, setCategory] = useState(initialItem?.category ?? "");
   const [intervalDays, setIntervalDays] = useState(initialItem?.intervalDays ?? 30);
@@ -68,11 +69,17 @@ export function ItemFormPage({ initialItem, onSubmit, onCancel, isSubmitting }: 
           <span className="text-slate-600">カテゴリ(任意)</span>
           <input
             type="text"
+            list="category-options"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
             placeholder="例: 掃除機"
           />
+          <datalist id="category-options">
+            {categories.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
         </label>
 
         <label className="block text-sm">

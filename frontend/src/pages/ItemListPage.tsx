@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CreateItemInput, Item, UpdateItemInput } from "@maintenance-reminder/shared";
 import * as api from "../api/client.js";
@@ -9,8 +9,14 @@ export function ItemListPage() {
   const queryClient = useQueryClient();
   const [isAdding, setIsAdding] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState("");
 
   const itemsQuery = useQuery({ queryKey: ["items"], queryFn: () => api.listItems() });
+  const items = itemsQuery.data ?? [];
+  const categories = useMemo(
+    () => Array.from(new Set(items.map((item) => item.category).filter((c): c is string => !!c))).sort(),
+    [items],
+  );
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["items"] });
@@ -50,7 +56,7 @@ export function ItemListPage() {
   if (itemsQuery.isLoading) return <p className="text-slate-500">読み込み中...</p>;
   if (itemsQuery.isError) return <p className="text-red-600">読み込みに失敗しました: {String(itemsQuery.error)}</p>;
 
-  const items = itemsQuery.data ?? [];
+  const filteredItems = categoryFilter ? items.filter((item) => item.category === categoryFilter) : items;
 
   return (
     <div className="space-y-4">
@@ -67,8 +73,30 @@ export function ItemListPage() {
         )}
       </div>
 
+      {categories.length > 0 && (
+        <div className="flex items-center gap-2">
+          <label htmlFor="category-filter" className="text-sm text-slate-600">
+            ジャンルで絞り込み
+          </label>
+          <select
+            id="category-filter"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+          >
+            <option value="">すべて</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {isAdding && (
         <ItemFormPage
+          categories={categories}
           onSubmit={(input) => createMutation.mutate(input as CreateItemInput)}
           onCancel={() => setIsAdding(false)}
           isSubmitting={createMutation.isPending}
@@ -79,12 +107,17 @@ export function ItemListPage() {
         <p className="text-sm text-slate-500">まだアイテムが登録されていません。「+ アイテムを追加」から登録してください。</p>
       )}
 
+      {items.length > 0 && filteredItems.length === 0 && (
+        <p className="text-sm text-slate-500">該当するアイテムがありません。</p>
+      )}
+
       <div className="space-y-3">
-        {items.map((item) =>
+        {filteredItems.map((item) =>
           editingItem?.id === item.id ? (
             <ItemFormPage
               key={item.id}
               initialItem={item}
+              categories={categories}
               onSubmit={(input) => updateMutation.mutate({ id: item.id, input: input as UpdateItemInput })}
               onCancel={() => setEditingItem(null)}
               isSubmitting={updateMutation.isPending}
