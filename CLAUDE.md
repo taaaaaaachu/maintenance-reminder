@@ -55,3 +55,14 @@ npm workspaces モノレポ
 
 - URL: `reminder.example.com`(Cloudflare Access配下。`/feed/*`と`/webhook/*`のみAccessをBypass)
 - リポジトリ: `https://github.com/taaaaaaachu/maintenance-reminder`(private)
+
+## 共有用テンプレートリポジトリとの同期
+
+個人情報・環境固有値(独自ドメイン、D1のdatabase_id、送信元メールアドレス等)を除去した共有用テンプレート `https://github.com/taaaaaaachu/maintenance-reminder-template`(private)を別途用意している。このリポジトリとはgit履歴が完全に独立している(テンプレート側は個人情報除去のため単一コミットで作り直したもの)ため、`git merge`等での自動同期はできない。
+
+「テンプレートにも反映して」と言われたら、以下の手順で同期する。
+
+1. ローカルの軽量タグ`template-synced`が指すコミットから現在のHEADまでの差分を確認する: `git diff template-synced..HEAD`(このタグはリモートにはpushしていない、ローカルだけの目印)
+2. 環境固有ファイルは反映しない: `backend/wrangler.toml`の個人値(ドメイン・database_id・送信元アドレス)、`backend/.dev.vars`、`CLAUDE.md`の「本番環境」セクション
+3. テンプレート側リポジトリ(スクラッチ領域等に別途clone)に差分を適用し、個人情報が混入していないことをgrep等で再確認してからコミット・push
+4. 反映が終わったら、ローカルの`template-synced`タグを最新コミットに付け直す: `git tag -f template-synced <commit>`
