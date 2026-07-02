@@ -9,6 +9,7 @@ function makeItem(overrides: Partial<Item> = {}): Item {
     category: null,
     intervalDays: 7,
     notifyDaysBefore: 0,
+    notifyTime: "07:00",
     lastDoneAt: "2026-06-25",
     nextDueAt: "2026-07-02",
     memo: null,

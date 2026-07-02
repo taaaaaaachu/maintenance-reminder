@@ -6,6 +6,7 @@ export interface Item {
   category: string | null;
   intervalDays: number;
   notifyDaysBefore: number;
+  notifyTime: string;
   lastDoneAt: string | null;
   nextDueAt: string;
   memo: string | null;
@@ -19,6 +20,7 @@ export interface CreateItemInput {
   category?: string | null;
   intervalDays: number;
   notifyDaysBefore?: number;
+  notifyTime?: string;
   memo?: string | null;
   lastDoneAt?: string;
 }
@@ -28,6 +30,7 @@ export interface UpdateItemInput {
   category?: string | null;
   intervalDays?: number;
   notifyDaysBefore?: number;
+  notifyTime?: string;
   memo?: string | null;
   isActive?: boolean;
 }
@@ -73,10 +76,6 @@ export interface IcsFeedToken {
 
 export interface LineInviteUrl {
   url: string | null;
-}
-
-export interface NotificationTime {
-  time: string;
 }
 
 export interface NotificationLogEntry {

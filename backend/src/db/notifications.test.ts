@@ -100,6 +100,7 @@ describe("recordNotificationLog / hasSuccessfulNotificationSince", () => {
       category: null,
       intervalDays: 7,
       notifyDaysBefore: 0,
+      notifyTime: "07:00",
       memo: null,
       lastDoneAt: "2026-07-01",
       nextDueAt: "2026-07-02",

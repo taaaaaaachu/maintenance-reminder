@@ -5,7 +5,6 @@ import type { NotificationChannel } from "@maintenance-reminder/shared";
 import * as notificationsDb from "../db/notifications.js";
 import { sendToRecipient } from "../notifications/dispatcher.js";
 import { getOrCreateIcsFeedToken, regenerateIcsFeedToken } from "../ics/token.js";
-import { getNotificationTime, setNotificationTime } from "../notifications/scheduleConfig.js";
 import { getConfigValue, setConfigValue } from "../db/appConfig.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import type { HonoEnv } from "../types.js";
@@ -27,10 +26,6 @@ const addRecipientSchema = z.object({
 
 const lineInviteSchema = z.object({
   url: z.string().url(),
-});
-
-const notificationTimeSchema = z.object({
-  time: z.string().regex(/^([01]\d|2[0-3]):(00|30)$/, "HH:00またはHH:30の形式で指定してください"),
 });
 
 const LINE_INVITE_URL_KEY = "line_invite_url";
@@ -132,17 +127,4 @@ settingsRouter.put("/line-invite", async (c) => {
 
   await setConfigValue(c.env.DB, LINE_INVITE_URL_KEY, parsed.data.url);
   return c.json({ url: parsed.data.url });
-});
-
-settingsRouter.get("/notification-time", async (c) => {
-  const time = await getNotificationTime(c.env.DB);
-  return c.json({ time });
-});
-
-settingsRouter.put("/notification-time", async (c) => {
-  const parsed = notificationTimeSchema.safeParse(await c.req.json());
-  if (!parsed.success) throw badRequest(parsed.error.message);
-
-  await setNotificationTime(c.env.DB, parsed.data.time);
-  return c.json({ time: parsed.data.time });
 });

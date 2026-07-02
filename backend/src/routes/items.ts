@@ -6,11 +6,15 @@ import { addDaysToDateString, todayJstDateString } from "../lib/date.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import type { HonoEnv } from "../types.js";
 
+const NOTIFY_TIME_REGEX = /^([01]\d|2[0-3]):(00|30)$/;
+const DEFAULT_NOTIFY_TIME = "07:00";
+
 const createItemSchema = z.object({
   name: z.string().min(1).max(200),
   category: z.string().max(100).nullable().optional(),
   intervalDays: z.number().int().positive(),
   notifyDaysBefore: z.number().int().min(0).optional(),
+  notifyTime: z.string().regex(NOTIFY_TIME_REGEX, "HH:00またはHH:30の形式で指定してください").optional(),
   memo: z.string().max(2000).nullable().optional(),
   lastDoneAt: z
     .string()
@@ -23,6 +27,7 @@ const updateItemSchema = z.object({
   category: z.string().max(100).nullable().optional(),
   intervalDays: z.number().int().positive().optional(),
   notifyDaysBefore: z.number().int().min(0).optional(),
+  notifyTime: z.string().regex(NOTIFY_TIME_REGEX, "HH:00またはHH:30の形式で指定してください").optional(),
   memo: z.string().max(2000).nullable().optional(),
   isActive: z.boolean().optional(),
 });
@@ -50,6 +55,7 @@ itemsRouter.post("/", async (c) => {
     category: input.category ?? null,
     intervalDays: input.intervalDays,
     notifyDaysBefore: input.notifyDaysBefore ?? 0,
+    notifyTime: input.notifyTime ?? DEFAULT_NOTIFY_TIME,
     memo: input.memo ?? null,
     lastDoneAt,
     nextDueAt: addDaysToDateString(lastDoneAt, input.intervalDays),

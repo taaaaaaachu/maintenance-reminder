@@ -30,7 +30,8 @@ export function ItemCard({ item, onComplete, onSnooze, onEdit, onDelete, isMutat
       {item.memo && <p className="mt-2 text-sm text-slate-600">{item.memo}</p>}
 
       <p className="mt-2 text-xs text-slate-400">
-        お手入れ間隔: {item.intervalDays}日 / 前回: {item.lastDoneAt ?? "記録なし"}
+        お手入れ間隔: {item.intervalDays}日 / 前回: {item.lastDoneAt ?? "記録なし"} / 通知: {item.notifyTime}
+        {item.notifyDaysBefore > 0 && `(${item.notifyDaysBefore}日前から)`}
       </p>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">

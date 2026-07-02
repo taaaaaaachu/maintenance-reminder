@@ -2,18 +2,15 @@ import * as itemsDb from "../db/queries.js";
 import * as notificationsDb from "../db/notifications.js";
 import { sendToRecipient } from "../notifications/dispatcher.js";
 import { buildReminderMessage } from "../notifications/templates.js";
-import { getNotificationTime } from "../notifications/scheduleConfig.js";
 import { currentJstTimeString, jstDateStringToUtcStartIso, todayJstDateString } from "../lib/date.js";
 import type { AppBindings } from "../types.js";
 
 export async function checkReminders(env: AppBindings): Promise<void> {
-  const configuredTime = await getNotificationTime(env.DB);
-  if (currentJstTimeString() !== configuredTime) return;
-
   const today = todayJstDateString();
+  const currentTime = currentJstTimeString();
   const sinceIso = jstDateStringToUtcStartIso(today);
 
-  const dueItems = await itemsDb.listDueItems(env.DB, today);
+  const dueItems = (await itemsDb.listDueItems(env.DB, today)).filter((item) => item.notifyTime === currentTime);
   const enabledChannels = (await notificationsDb.listNotificationSettings(env.DB))
     .filter((s) => s.isEnabled)
     .map((s) => s.channel);

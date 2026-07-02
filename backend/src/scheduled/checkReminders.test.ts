@@ -2,7 +2,6 @@ import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as itemsDb from "../db/queries.js";
 import * as notificationsDb from "../db/notifications.js";
-import { setNotificationTime } from "../notifications/scheduleConfig.js";
 import { checkReminders } from "./checkReminders.js";
 
 async function clearAll() {
@@ -20,7 +19,7 @@ beforeEach(async () => {
   fetchMock.mockReset();
   fetchMock.mockResolvedValue(new Response("ok", { status: 200 }));
   vi.stubGlobal("fetch", fetchMock);
-  // 2026-07-01T22:00:00Z is 2026-07-02 07:00 JST, matching the default notification time.
+  // 2026-07-01T22:00:00Z is 2026-07-02 07:00 JST.
   vi.setSystemTime(new Date("2026-07-01T22:00:00Z"));
 });
 
@@ -30,13 +29,14 @@ afterEach(() => {
 });
 
 describe("checkReminders", () => {
-  it("sends a notification to every recipient of an enabled channel for a due item", async () => {
+  it("sends a notification to every recipient of an enabled channel for a due item at its notify time", async () => {
     const item = await itemsDb.createItem(env.DB, {
       id: "due-1",
       name: "ロボット掃除機の清掃",
       category: null,
       intervalDays: 7,
       notifyDaysBefore: 0,
+      notifyTime: "07:00",
       memo: null,
       lastDoneAt: "2026-06-25",
       nextDueAt: "2026-07-02",
@@ -63,6 +63,7 @@ describe("checkReminders", () => {
       category: null,
       intervalDays: 7,
       notifyDaysBefore: 0,
+      notifyTime: "07:00",
       memo: null,
       lastDoneAt: "2026-06-25",
       nextDueAt: "2026-07-02",
@@ -83,6 +84,7 @@ describe("checkReminders", () => {
       category: null,
       intervalDays: 30,
       notifyDaysBefore: 0,
+      notifyTime: "07:00",
       memo: null,
       lastDoneAt: "2026-07-01",
       nextDueAt: "2026-07-31",
@@ -102,6 +104,7 @@ describe("checkReminders", () => {
       category: null,
       intervalDays: 30,
       notifyDaysBefore: 5,
+      notifyTime: "07:00",
       memo: null,
       lastDoneAt: "2026-07-01",
       nextDueAt: "2026-07-05",
@@ -121,6 +124,7 @@ describe("checkReminders", () => {
       category: null,
       intervalDays: 7,
       notifyDaysBefore: 0,
+      notifyTime: "07:00",
       memo: null,
       lastDoneAt: "2026-06-25",
       nextDueAt: "2026-07-02",
@@ -141,6 +145,7 @@ describe("checkReminders", () => {
       category: null,
       intervalDays: 7,
       notifyDaysBefore: 0,
+      notifyTime: "07:00",
       memo: null,
       lastDoneAt: "2026-06-25",
       nextDueAt: "2026-07-02",
@@ -162,14 +167,14 @@ describe("checkReminders", () => {
     expect(results).toHaveLength(1);
   });
 
-  it("does nothing when the current time does not match the configured notification time", async () => {
-    await setNotificationTime(env.DB, "20:00");
+  it("does not notify an item whose notify_time does not match the current time", async () => {
     await itemsDb.createItem(env.DB, {
       id: "due-5",
       name: "加湿器の掃除",
       category: null,
       intervalDays: 7,
       notifyDaysBefore: 0,
+      notifyTime: "20:00",
       memo: null,
       lastDoneAt: "2026-06-25",
       nextDueAt: "2026-07-02",
@@ -180,5 +185,39 @@ describe("checkReminders", () => {
     await checkReminders(env);
 
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("notifies only the items whose notify_time matches the current time when items differ", async () => {
+    const morningItem = await itemsDb.createItem(env.DB, {
+      id: "morning-item",
+      name: "朝アイテム",
+      category: null,
+      intervalDays: 7,
+      notifyDaysBefore: 0,
+      notifyTime: "07:00",
+      memo: null,
+      lastDoneAt: "2026-06-25",
+      nextDueAt: "2026-07-02",
+    });
+    await itemsDb.createItem(env.DB, {
+      id: "evening-item",
+      name: "夜アイテム",
+      category: null,
+      intervalDays: 7,
+      notifyDaysBefore: 0,
+      notifyTime: "20:00",
+      memo: null,
+      lastDoneAt: "2026-06-25",
+      nextDueAt: "2026-07-02",
+    });
+    await notificationsDb.setNotificationEnabled(env.DB, "pushover", true);
+    await notificationsDb.addRecipient(env.DB, "pushover", "user-key-1", null);
+
+    await checkReminders(env);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(
+      await notificationsDb.hasSuccessfulNotificationSince(env.DB, morningItem.id, "pushover", "user-key-1", "2026-07-01T15:00:00.000Z"),
+    ).toBe(true);
   });
 });

@@ -66,6 +66,21 @@ describe("POST /api/items", () => {
     const { res } = await createItem({ name: "item", intervalDays: 7, notifyDaysBefore: -1 });
     expect(res.status).toBe(400);
   });
+
+  it("defaults notifyTime to 07:00 when omitted", async () => {
+    const { json } = await createItem({ name: "item", intervalDays: 7 });
+    expect(json.notifyTime).toBe("07:00");
+  });
+
+  it("accepts a provided notifyTime on a 30-minute boundary", async () => {
+    const { json } = await createItem({ name: "item", intervalDays: 7, notifyTime: "20:30" });
+    expect(json.notifyTime).toBe("20:30");
+  });
+
+  it("rejects a notifyTime that isn't on a 30-minute boundary", async () => {
+    const { res } = await createItem({ name: "item", intervalDays: 7, notifyTime: "20:15" });
+    expect(res.status).toBe(400);
+  });
 });
 
 describe("GET /api/items", () => {
@@ -115,6 +130,20 @@ describe("PATCH /api/items/:id", () => {
 
     expect(res.status).toBe(200);
     expect(updated.notifyDaysBefore).toBe(5);
+  });
+
+  it("updates notifyTime", async () => {
+    const { json: created } = await createItem({ name: "item", intervalDays: 7 });
+
+    const res = await exports.default.fetch(`${BASE_URL}/api/items/${created.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notifyTime: "22:30" }),
+    });
+    const updated = (await res.json()) as Record<string, unknown>;
+
+    expect(res.status).toBe(200);
+    expect(updated.notifyTime).toBe("22:30");
   });
 
   it("returns 404 for a non-existent item", async () => {

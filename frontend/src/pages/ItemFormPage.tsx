@@ -1,6 +1,12 @@
 import { useState, type FormEvent } from "react";
 import type { CreateItemInput, Item, UpdateItemInput } from "@maintenance-reminder/shared";
 
+const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
+  const hour = String(Math.floor(i / 2)).padStart(2, "0");
+  const minute = i % 2 === 0 ? "00" : "30";
+  return `${hour}:${minute}`;
+});
+
 interface ItemFormPageProps {
   initialItem?: Item;
   onSubmit: (input: CreateItemInput | UpdateItemInput) => void;
@@ -13,6 +19,7 @@ export function ItemFormPage({ initialItem, onSubmit, onCancel, isSubmitting }: 
   const [category, setCategory] = useState(initialItem?.category ?? "");
   const [intervalDays, setIntervalDays] = useState(initialItem?.intervalDays ?? 30);
   const [notifyDaysBefore, setNotifyDaysBefore] = useState(initialItem?.notifyDaysBefore ?? 0);
+  const [notifyTime, setNotifyTime] = useState(initialItem?.notifyTime ?? "07:00");
   const [memo, setMemo] = useState(initialItem?.memo ?? "");
   const [lastDoneAt, setLastDoneAt] = useState("");
 
@@ -24,6 +31,7 @@ export function ItemFormPage({ initialItem, onSubmit, onCancel, isSubmitting }: 
         category: category || null,
         intervalDays,
         notifyDaysBefore,
+        notifyTime,
         memo: memo || null,
       });
     } else {
@@ -32,6 +40,7 @@ export function ItemFormPage({ initialItem, onSubmit, onCancel, isSubmitting }: 
         category: category || null,
         intervalDays,
         notifyDaysBefore,
+        notifyTime,
         memo: memo || null,
         lastDoneAt: lastDoneAt || undefined,
       });
@@ -92,6 +101,21 @@ export function ItemFormPage({ initialItem, onSubmit, onCancel, isSubmitting }: 
           </label>
           <span className="mt-1 block text-xs text-slate-400">0なら予定日当日から通知します</span>
         </div>
+
+        <label className="block text-sm">
+          <span className="text-slate-600">通知時刻</span>
+          <select
+            value={notifyTime}
+            onChange={(e) => setNotifyTime(e.target.value)}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-1.5 text-sm"
+          >
+            {TIME_OPTIONS.map((time) => (
+              <option key={time} value={time}>
+                {time}
+              </option>
+            ))}
+          </select>
+        </label>
 
         <label className="block text-sm">
           <span className="text-slate-600">メモ(任意)</span>
