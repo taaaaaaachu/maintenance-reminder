@@ -65,6 +65,7 @@ npm workspaces モノレポ
 「テンプレートにも反映して」と言われたら、以下の手順で同期する。
 
 1. 軽量タグ`template-synced`が指すコミットから現在のHEADまでの差分を確認する: `git diff template-synced..HEAD`
-2. 環境固有ファイルは反映しない: `backend/wrangler.toml`の個人値(ドメイン・database_id・送信元アドレス)、`backend/.dev.vars`、`CLAUDE.md`の「本番環境」セクション
-3. テンプレート側リポジトリ(スクラッチ領域等に別途clone)に差分を適用し、個人情報が混入していないことをgrep等で再確認してからコミット・push
-4. 反映が終わったら、`template-synced`タグを最新コミットに付け直してpushする: `git tag -f template-synced <commit> && git push origin template-synced -f`
+2. 環境固有ファイルは反映しない: `backend/wrangler.toml`の個人値(ドメイン・database_id・送信元アドレス)、`backend/.dev.vars`
+3. **`CLAUDE.md`は他のファイルと一緒に`cp`で機械的にコピーしない。** 個人情報(独自ドメイン・GitHubユーザー名・リポジトリURL等)を含む「本番環境」セクションと、このセクション自体(「共有用テンプレートリポジトリとの同期」。本番運用手順であり、テンプレート利用者には無関係かつリポジトリURLという個人情報を含む)を必ず除外し、それ以外の差分(設計判断・ハマりどころなど)だけをテンプレート側の対応箇所に手動で追記・編集する。過去に一括`cp`で丸ごと上書きしてこれらのセクションが個人情報ごと混入した事故があった。
+4. テンプレート側リポジトリ(スクラッチ領域等に別途clone)に差分を適用し、個人情報が混入していないことをgrep等で再確認してからコミット・push
+5. 反映が終わったら、`template-synced`タグを最新コミットに付け直してpushする: `git tag -f template-synced <commit> && git push origin template-synced -f`
