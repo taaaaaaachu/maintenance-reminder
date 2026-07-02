@@ -1,55 +1,105 @@
 import { NOTIFICATION_CHANNELS } from "@maintenance-reminder/shared";
-import type { NotificationChannel, NotificationSetting } from "@maintenance-reminder/shared";
+import type { NotificationChannel, NotificationRecipient, NotificationSetting } from "@maintenance-reminder/shared";
 
 interface NotificationSettingRow {
   channel: string;
   is_enabled: number;
-  config_json: string;
-  updated_at: string;
 }
 
-function rowToSetting(channel: NotificationChannel, row: NotificationSettingRow | null): NotificationSetting {
+interface NotificationRecipientRow {
+  id: string;
+  channel: string;
+  identifier: string;
+  label: string | null;
+  created_at: string;
+}
+
+function rowToRecipient(row: NotificationRecipientRow): NotificationRecipient {
   return {
-    channel,
-    isEnabled: row ? row.is_enabled === 1 : false,
-    config: row ? (JSON.parse(row.config_json) as Record<string, string>) : {},
+    id: row.id,
+    channel: row.channel as NotificationChannel,
+    identifier: row.identifier,
+    label: row.label,
+    createdAt: row.created_at,
   };
 }
 
 export async function listNotificationSettings(db: D1Database): Promise<NotificationSetting[]> {
   const { results } = await db.prepare("SELECT * FROM notification_settings").all<NotificationSettingRow>();
   const byChannel = new Map(results.map((row) => [row.channel, row]));
-  return NOTIFICATION_CHANNELS.map((channel) => rowToSetting(channel, byChannel.get(channel) ?? null));
+  return NOTIFICATION_CHANNELS.map((channel) => ({
+    channel,
+    isEnabled: byChannel.get(channel)?.is_enabled === 1,
+  }));
 }
 
-export async function getNotificationSetting(db: D1Database, channel: NotificationChannel): Promise<NotificationSetting> {
-  const row = await db
-    .prepare("SELECT * FROM notification_settings WHERE channel = ?")
-    .bind(channel)
-    .first<NotificationSettingRow>();
-  return rowToSetting(channel, row);
-}
-
-export async function upsertNotificationSetting(
+export async function setNotificationEnabled(
   db: D1Database,
   channel: NotificationChannel,
   isEnabled: boolean,
-  config: Record<string, string>,
 ): Promise<NotificationSetting> {
   await db
     .prepare(
-      `INSERT INTO notification_settings (channel, is_enabled, config_json, updated_at)
-       VALUES (?, ?, ?, ?)
-       ON CONFLICT(channel) DO UPDATE SET is_enabled = excluded.is_enabled, config_json = excluded.config_json, updated_at = excluded.updated_at`,
+      `INSERT INTO notification_settings (channel, is_enabled, updated_at)
+       VALUES (?, ?, ?)
+       ON CONFLICT(channel) DO UPDATE SET is_enabled = excluded.is_enabled, updated_at = excluded.updated_at`,
     )
-    .bind(channel, isEnabled ? 1 : 0, JSON.stringify(config), new Date().toISOString())
+    .bind(channel, isEnabled ? 1 : 0, new Date().toISOString())
     .run();
-  return getNotificationSetting(db, channel);
+  return { channel, isEnabled };
+}
+
+export async function listRecipients(db: D1Database, channel: NotificationChannel): Promise<NotificationRecipient[]> {
+  const { results } = await db
+    .prepare("SELECT * FROM notification_recipients WHERE channel = ? ORDER BY created_at ASC")
+    .bind(channel)
+    .all<NotificationRecipientRow>();
+  return results.map(rowToRecipient);
+}
+
+export async function addRecipient(
+  db: D1Database,
+  channel: NotificationChannel,
+  identifier: string,
+  label: string | null,
+): Promise<NotificationRecipient> {
+  const id = crypto.randomUUID();
+  await db
+    .prepare(
+      `INSERT INTO notification_recipients (id, channel, identifier, label)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(channel, identifier) DO UPDATE SET label = excluded.label`,
+    )
+    .bind(id, channel, identifier, label)
+    .run();
+  const row = await db
+    .prepare("SELECT * FROM notification_recipients WHERE channel = ? AND identifier = ?")
+    .bind(channel, identifier)
+    .first<NotificationRecipientRow>();
+  if (!row) throw new Error("Failed to add recipient");
+  return rowToRecipient(row);
+}
+
+export async function removeRecipient(db: D1Database, channel: NotificationChannel, id: string): Promise<void> {
+  await db.prepare("DELETE FROM notification_recipients WHERE channel = ? AND id = ?").bind(channel, id).run();
+}
+
+export async function getRecipient(
+  db: D1Database,
+  channel: NotificationChannel,
+  id: string,
+): Promise<NotificationRecipient | null> {
+  const row = await db
+    .prepare("SELECT * FROM notification_recipients WHERE channel = ? AND id = ?")
+    .bind(channel, id)
+    .first<NotificationRecipientRow>();
+  return row ? rowToRecipient(row) : null;
 }
 
 export interface RecordNotificationLogParams {
   itemId: string;
   channel: NotificationChannel;
+  recipientIdentifier: string;
   status: "success" | "failed";
   errorMessage?: string | null;
 }
@@ -57,9 +107,17 @@ export interface RecordNotificationLogParams {
 export async function recordNotificationLog(db: D1Database, params: RecordNotificationLogParams): Promise<void> {
   await db
     .prepare(
-      "INSERT INTO notification_log (item_id, channel, status, error_message, sent_at) VALUES (?, ?, ?, ?, ?)",
+      `INSERT INTO notification_log (item_id, channel, recipient_identifier, status, error_message, sent_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
     )
-    .bind(params.itemId, params.channel, params.status, params.errorMessage ?? null, new Date().toISOString())
+    .bind(
+      params.itemId,
+      params.channel,
+      params.recipientIdentifier,
+      params.status,
+      params.errorMessage ?? null,
+      new Date().toISOString(),
+    )
     .run();
 }
 
@@ -67,13 +125,16 @@ export async function hasSuccessfulNotificationSince(
   db: D1Database,
   itemId: string,
   channel: NotificationChannel,
+  recipientIdentifier: string,
   sinceIso: string,
 ): Promise<boolean> {
   const row = await db
     .prepare(
-      "SELECT id FROM notification_log WHERE item_id = ? AND channel = ? AND status = 'success' AND sent_at >= ? LIMIT 1",
+      `SELECT id FROM notification_log
+       WHERE item_id = ? AND channel = ? AND recipient_identifier = ? AND status = 'success' AND sent_at >= ?
+       LIMIT 1`,
     )
-    .bind(itemId, channel, sinceIso)
+    .bind(itemId, channel, recipientIdentifier, sinceIso)
     .first();
   return row !== null;
 }

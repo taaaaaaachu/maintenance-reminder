@@ -1,9 +1,12 @@
 import type {
+  AddNotificationRecipientInput,
   ApiError,
   CreateItemInput,
   IcsFeedToken,
   Item,
+  LineInviteUrl,
   NotificationChannel,
+  NotificationRecipient,
   NotificationSetting,
   SnoozeItemInput,
   UpdateItemInput,
@@ -58,8 +61,23 @@ export function updateNotificationSetting(
   return request(`/settings/notifications/${channel}`, { method: "PUT", body: JSON.stringify(input) });
 }
 
-export function testNotificationSetting(channel: NotificationChannel): Promise<{ ok: boolean }> {
-  return request(`/settings/notifications/${channel}/test`, { method: "POST" });
+export function listNotificationRecipients(channel: NotificationChannel): Promise<NotificationRecipient[]> {
+  return request(`/settings/notifications/${channel}/recipients`);
+}
+
+export function addNotificationRecipient(
+  channel: NotificationChannel,
+  input: AddNotificationRecipientInput,
+): Promise<NotificationRecipient> {
+  return request(`/settings/notifications/${channel}/recipients`, { method: "POST", body: JSON.stringify(input) });
+}
+
+export function removeNotificationRecipient(channel: NotificationChannel, id: string): Promise<void> {
+  return request(`/settings/notifications/${channel}/recipients/${id}`, { method: "DELETE" });
+}
+
+export function testNotificationRecipient(channel: NotificationChannel, id: string): Promise<{ ok: boolean }> {
+  return request(`/settings/notifications/${channel}/recipients/${id}/test`, { method: "POST" });
 }
 
 export function getIcsFeedToken(): Promise<IcsFeedToken> {
@@ -68,4 +86,12 @@ export function getIcsFeedToken(): Promise<IcsFeedToken> {
 
 export function regenerateIcsFeedToken(): Promise<IcsFeedToken> {
   return request("/settings/ics-feed/regenerate", { method: "POST" });
+}
+
+export function getLineInviteUrl(): Promise<LineInviteUrl> {
+  return request("/settings/line-invite");
+}
+
+export function updateLineInviteUrl(url: string): Promise<LineInviteUrl> {
+  return request("/settings/line-invite", { method: "PUT", body: JSON.stringify({ url }) });
 }

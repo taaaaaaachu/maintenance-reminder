@@ -45,14 +45,29 @@ export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
 export interface NotificationSetting {
   channel: NotificationChannel;
   isEnabled: boolean;
-  config: Record<string, string>;
 }
 
 export interface UpdateNotificationSettingInput {
   isEnabled: boolean;
-  config: Record<string, string>;
+}
+
+export interface NotificationRecipient {
+  id: string;
+  channel: NotificationChannel;
+  identifier: string;
+  label: string | null;
+  createdAt: string;
+}
+
+export interface AddNotificationRecipientInput {
+  identifier: string;
+  label?: string | null;
 }
 
 export interface IcsFeedToken {
   token: string;
+}
+
+export interface LineInviteUrl {
+  url: string | null;
 }

@@ -1,6 +1,7 @@
 declare global {
   interface Env {
     LINE_CHANNEL_ACCESS_TOKEN: string;
+    LINE_CHANNEL_SECRET: string;
     RESEND_API_KEY: string;
     RESEND_FROM_ADDRESS: string;
     PUSHOVER_API_TOKEN: string;
@@ -8,6 +9,7 @@ declare global {
   namespace Cloudflare {
     interface Env {
       LINE_CHANNEL_ACCESS_TOKEN: string;
+      LINE_CHANNEL_SECRET: string;
       RESEND_API_KEY: string;
       RESEND_FROM_ADDRESS: string;
       PUSHOVER_API_TOKEN: string;

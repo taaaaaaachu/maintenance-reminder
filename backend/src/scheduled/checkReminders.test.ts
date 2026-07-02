@@ -6,6 +6,7 @@ import { checkReminders } from "./checkReminders.js";
 
 async function clearAll() {
   await env.DB.prepare("DELETE FROM notification_log").run();
+  await env.DB.prepare("DELETE FROM notification_recipients").run();
   await env.DB.prepare("DELETE FROM notification_settings").run();
   await env.DB.prepare("DELETE FROM items").run();
 }
@@ -26,7 +27,7 @@ afterEach(() => {
 });
 
 describe("checkReminders", () => {
-  it("sends a notification for a due item on an enabled channel and records success", async () => {
+  it("sends a notification to every recipient of an enabled channel for a due item", async () => {
     const item = await itemsDb.createItem(env.DB, {
       id: "due-1",
       name: "ロボット掃除機の清掃",
@@ -36,21 +37,22 @@ describe("checkReminders", () => {
       lastDoneAt: "2026-06-25",
       nextDueAt: "2026-07-02",
     });
-    await notificationsDb.upsertNotificationSetting(env.DB, "pushover", true, { userKey: "abc123" });
+    await notificationsDb.setNotificationEnabled(env.DB, "pushover", true);
+    await notificationsDb.addRecipient(env.DB, "pushover", "user-key-1", "父");
+    await notificationsDb.addRecipient(env.DB, "pushover", "user-key-2", "母");
 
     await checkReminders(env);
 
-    expect(fetchMock).toHaveBeenCalledOnce();
-    const sent = await notificationsDb.hasSuccessfulNotificationSince(
-      env.DB,
-      item.id,
-      "pushover",
-      "2026-07-01T15:00:00.000Z",
-    );
-    expect(sent).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(
+      await notificationsDb.hasSuccessfulNotificationSince(env.DB, item.id, "pushover", "user-key-1", "2026-07-01T15:00:00.000Z"),
+    ).toBe(true);
+    expect(
+      await notificationsDb.hasSuccessfulNotificationSince(env.DB, item.id, "pushover", "user-key-2", "2026-07-01T15:00:00.000Z"),
+    ).toBe(true);
   });
 
-  it("does not resend on the same day once a successful notification is recorded", async () => {
+  it("does not resend to the same recipient on the same day once successfully notified", async () => {
     await itemsDb.createItem(env.DB, {
       id: "due-2",
       name: "洗濯機の掃除",
@@ -60,12 +62,13 @@ describe("checkReminders", () => {
       lastDoneAt: "2026-06-25",
       nextDueAt: "2026-07-02",
     });
-    await notificationsDb.upsertNotificationSetting(env.DB, "pushover", true, { userKey: "abc123" });
+    await notificationsDb.setNotificationEnabled(env.DB, "pushover", true);
+    await notificationsDb.addRecipient(env.DB, "pushover", "user-key-1", null);
 
     await checkReminders(env);
     await checkReminders(env);
 
-    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("skips items that are not yet due", async () => {
@@ -78,14 +81,15 @@ describe("checkReminders", () => {
       lastDoneAt: "2026-07-01",
       nextDueAt: "2026-07-31",
     });
-    await notificationsDb.upsertNotificationSetting(env.DB, "pushover", true, { userKey: "abc123" });
+    await notificationsDb.setNotificationEnabled(env.DB, "pushover", true);
+    await notificationsDb.addRecipient(env.DB, "pushover", "user-key-1", null);
 
     await checkReminders(env);
 
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("skips channels that are not enabled", async () => {
+  it("skips channels that are not enabled even if recipients are registered", async () => {
     await itemsDb.createItem(env.DB, {
       id: "due-3",
       name: "加湿器の掃除",
@@ -95,6 +99,7 @@ describe("checkReminders", () => {
       lastDoneAt: "2026-06-25",
       nextDueAt: "2026-07-02",
     });
+    await notificationsDb.addRecipient(env.DB, "pushover", "user-key-1", null);
     // pushover left disabled (default)
 
     await checkReminders(env);
@@ -102,7 +107,7 @@ describe("checkReminders", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("records a failed log entry and does not throw when the send fails", async () => {
+  it("records a failed log entry per recipient and does not throw when the send fails", async () => {
     fetchMock.mockResolvedValue(new Response("server error", { status: 500 }));
     const item = await itemsDb.createItem(env.DB, {
       id: "due-4",
@@ -113,17 +118,14 @@ describe("checkReminders", () => {
       lastDoneAt: "2026-06-25",
       nextDueAt: "2026-07-02",
     });
-    await notificationsDb.upsertNotificationSetting(env.DB, "pushover", true, { userKey: "abc123" });
+    await notificationsDb.setNotificationEnabled(env.DB, "pushover", true);
+    await notificationsDb.addRecipient(env.DB, "pushover", "user-key-1", null);
 
     await expect(checkReminders(env)).resolves.toBeUndefined();
 
-    const sent = await notificationsDb.hasSuccessfulNotificationSince(
-      env.DB,
-      item.id,
-      "pushover",
-      "2026-07-01T15:00:00.000Z",
-    );
-    expect(sent).toBe(false);
+    expect(
+      await notificationsDb.hasSuccessfulNotificationSince(env.DB, item.id, "pushover", "user-key-1", "2026-07-01T15:00:00.000Z"),
+    ).toBe(false);
 
     const { results } = await env.DB.prepare(
       "SELECT * FROM notification_log WHERE item_id = ? AND status = 'failed'",

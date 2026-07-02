@@ -14,6 +14,7 @@ export default defineConfig(async () => {
           bindings: {
             TEST_MIGRATIONS: migrations,
             LINE_CHANNEL_ACCESS_TOKEN: "test-line-token",
+            LINE_CHANNEL_SECRET: "test-line-channel-secret",
             RESEND_API_KEY: "test-resend-key",
             PUSHOVER_API_TOKEN: "test-pushover-token",
           },

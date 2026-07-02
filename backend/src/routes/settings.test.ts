@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const BASE_URL = "https://example.com";
 
 async function clearSettings() {
+  await env.DB.prepare("DELETE FROM notification_log").run();
+  await env.DB.prepare("DELETE FROM notification_recipients").run();
   await env.DB.prepare("DELETE FROM notification_settings").run();
   await env.DB.prepare("DELETE FROM app_config").run();
 }
@@ -11,6 +13,15 @@ async function clearSettings() {
 beforeEach(async () => {
   await clearSettings();
 });
+
+async function addRecipient(channel: string, identifier: string, label: string | null = null) {
+  const res = await exports.default.fetch(`${BASE_URL}/api/settings/notifications/${channel}/recipients`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ identifier, label }),
+  });
+  return { res, json: (await res.json()) as { id: string; identifier: string; label: string | null } };
+}
 
 describe("GET /api/settings/notifications", () => {
   it("returns a disabled default entry for every channel", async () => {
@@ -24,48 +35,64 @@ describe("GET /api/settings/notifications", () => {
 });
 
 describe("PUT /api/settings/notifications/:channel", () => {
-  it("saves a valid config and enables the channel", async () => {
+  it("toggles the channel on and off", async () => {
     const res = await exports.default.fetch(`${BASE_URL}/api/settings/notifications/pushover`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isEnabled: true, config: { userKey: "abc123" } }),
+      body: JSON.stringify({ isEnabled: true }),
     });
-    const json = (await res.json()) as { isEnabled: boolean; config: Record<string, string> };
+    const json = (await res.json()) as { isEnabled: boolean };
 
     expect(res.status).toBe(200);
     expect(json.isEnabled).toBe(true);
-    expect(json.config.userKey).toBe("abc123");
   });
 
   it("rejects an unknown channel with 400", async () => {
     const res = await exports.default.fetch(`${BASE_URL}/api/settings/notifications/unknown`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isEnabled: false, config: {} }),
+      body: JSON.stringify({ isEnabled: false }),
     });
     expect(res.status).toBe(400);
-  });
-
-  it("rejects enabling a channel with an invalid config (e.g. malformed email)", async () => {
-    const res = await exports.default.fetch(`${BASE_URL}/api/settings/notifications/email`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isEnabled: true, config: { toAddress: "not-an-email" } }),
-    });
-    expect(res.status).toBe(400);
-  });
-
-  it("allows saving an incomplete config when the channel is disabled", async () => {
-    const res = await exports.default.fetch(`${BASE_URL}/api/settings/notifications/email`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isEnabled: false, config: {} }),
-    });
-    expect(res.status).toBe(200);
   });
 });
 
-describe("POST /api/settings/notifications/:channel/test", () => {
+describe("recipients CRUD", () => {
+  it("adds and lists a recipient for a channel", async () => {
+    const { res, json } = await addRecipient("email", "me@example.com", "自分");
+    expect(res.status).toBe(201);
+    expect(json).toMatchObject({ identifier: "me@example.com", label: "自分" });
+
+    const listRes = await exports.default.fetch(`${BASE_URL}/api/settings/notifications/email/recipients`);
+    const list = (await listRes.json()) as unknown[];
+    expect(list).toHaveLength(1);
+  });
+
+  it("rejects an invalid email identifier for the email channel", async () => {
+    const { res } = await addRecipient("email", "not-an-email");
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects an empty identifier", async () => {
+    const { res } = await addRecipient("pushover", "");
+    expect(res.status).toBe(400);
+  });
+
+  it("removes a recipient", async () => {
+    const { json } = await addRecipient("pushover", "user-key-1");
+
+    const deleteRes = await exports.default.fetch(
+      `${BASE_URL}/api/settings/notifications/pushover/recipients/${json.id}`,
+      { method: "DELETE" },
+    );
+    expect(deleteRes.status).toBe(204);
+
+    const listRes = await exports.default.fetch(`${BASE_URL}/api/settings/notifications/pushover/recipients`);
+    expect(await listRes.json()).toEqual([]);
+  });
+});
+
+describe("POST /api/settings/notifications/:channel/recipients/:id/test", () => {
   const fetchMock = vi.fn();
 
   beforeEach(() => {
@@ -78,38 +105,34 @@ describe("POST /api/settings/notifications/:channel/test", () => {
     vi.unstubAllGlobals();
   });
 
-  it("rejects with 400 when the channel is not enabled", async () => {
-    const res = await exports.default.fetch(`${BASE_URL}/api/settings/notifications/line/test`, { method: "POST" });
-    expect(res.status).toBe(400);
+  it("returns 404 when the recipient does not exist", async () => {
+    const res = await exports.default.fetch(`${BASE_URL}/api/settings/notifications/line/recipients/missing/test`, {
+      method: "POST",
+    });
+    expect(res.status).toBe(404);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("sends a test notification through the configured channel", async () => {
-    await exports.default.fetch(`${BASE_URL}/api/settings/notifications/pushover`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isEnabled: true, config: { userKey: "abc123" } }),
-    });
+  it("sends a test notification to the specified recipient", async () => {
+    const { json } = await addRecipient("pushover", "user-key-1");
 
-    const res = await exports.default.fetch(`${BASE_URL}/api/settings/notifications/pushover/test`, {
-      method: "POST",
-    });
+    const res = await exports.default.fetch(
+      `${BASE_URL}/api/settings/notifications/pushover/recipients/${json.id}/test`,
+      { method: "POST" },
+    );
 
     expect(res.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
   it("returns 400 with the underlying error message when sending fails", async () => {
-    await exports.default.fetch(`${BASE_URL}/api/settings/notifications/pushover`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isEnabled: true, config: { userKey: "abc123" } }),
-    });
+    const { json } = await addRecipient("pushover", "user-key-1");
     fetchMock.mockResolvedValue(new Response("nope", { status: 500 }));
 
-    const res = await exports.default.fetch(`${BASE_URL}/api/settings/notifications/pushover/test`, {
-      method: "POST",
-    });
+    const res = await exports.default.fetch(
+      `${BASE_URL}/api/settings/notifications/pushover/recipients/${json.id}/test`,
+      { method: "POST" },
+    );
 
     expect(res.status).toBe(400);
   });
@@ -147,5 +170,33 @@ describe("POST /api/settings/ics-feed/regenerate", () => {
 
     expect(res.status).toBe(200);
     expect(after.token).not.toBe(before.token);
+  });
+});
+
+describe("GET/PUT /api/settings/line-invite", () => {
+  it("returns null when not yet configured", async () => {
+    const res = await exports.default.fetch(`${BASE_URL}/api/settings/line-invite`);
+    expect(await res.json()).toEqual({ url: null });
+  });
+
+  it("saves and returns the invite URL", async () => {
+    const putRes = await exports.default.fetch(`${BASE_URL}/api/settings/line-invite`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: "https://line.me/R/ti/p/@abc1234" }),
+    });
+    expect(putRes.status).toBe(200);
+
+    const getRes = await exports.default.fetch(`${BASE_URL}/api/settings/line-invite`);
+    expect(await getRes.json()).toEqual({ url: "https://line.me/R/ti/p/@abc1234" });
+  });
+
+  it("rejects an invalid URL", async () => {
+    const res = await exports.default.fetch(`${BASE_URL}/api/settings/line-invite`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: "not-a-url" }),
+    });
+    expect(res.status).toBe(400);
   });
 });

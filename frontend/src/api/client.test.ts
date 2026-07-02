@@ -70,28 +70,72 @@ describe("api client", () => {
     expect(settings).toEqual([{ channel: "line" }]);
   });
 
-  it("updateNotificationSetting PUTs to the channel-specific endpoint", async () => {
-    fetchMock.mockResolvedValue(
-      new Response(JSON.stringify({ channel: "pushover", isEnabled: true, config: { userKey: "k" } }), {
-        status: 200,
-      }),
-    );
+  it("updateNotificationSetting PUTs the isEnabled flag to the channel-specific endpoint", async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ channel: "pushover", isEnabled: true }), { status: 200 }));
 
-    await api.updateNotificationSetting("pushover", { isEnabled: true, config: { userKey: "k" } });
+    await api.updateNotificationSetting("pushover", { isEnabled: true });
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("/api/settings/notifications/pushover");
     expect(init.method).toBe("PUT");
-    expect(JSON.parse(init.body as string)).toEqual({ isEnabled: true, config: { userKey: "k" } });
+    expect(JSON.parse(init.body as string)).toEqual({ isEnabled: true });
   });
 
-  it("testNotificationSetting POSTs to the test endpoint", async () => {
-    fetchMock.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+  it("listNotificationRecipients requests the channel's recipients endpoint", async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify([{ id: "1" }]), { status: 200 }));
 
-    await api.testNotificationSetting("email");
+    await api.listNotificationRecipients("email");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/settings/notifications/email/recipients", expect.any(Object));
+  });
+
+  it("addNotificationRecipient POSTs the identifier and label", async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ id: "1" }), { status: 201 }));
+
+    await api.addNotificationRecipient("email", { identifier: "me@example.com", label: "自分" });
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("/api/settings/notifications/email/test");
+    expect(url).toBe("/api/settings/notifications/email/recipients");
     expect(init.method).toBe("POST");
+    expect(JSON.parse(init.body as string)).toEqual({ identifier: "me@example.com", label: "自分" });
+  });
+
+  it("removeNotificationRecipient DELETEs the recipient", async () => {
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
+
+    await api.removeNotificationRecipient("email", "recipient-1");
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/settings/notifications/email/recipients/recipient-1");
+    expect(init.method).toBe("DELETE");
+  });
+
+  it("testNotificationRecipient POSTs to the recipient-specific test endpoint", async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+
+    await api.testNotificationRecipient("email", "recipient-1");
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/settings/notifications/email/recipients/recipient-1/test");
+    expect(init.method).toBe("POST");
+  });
+
+  it("getLineInviteUrl requests the line-invite endpoint", async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ url: null }), { status: 200 }));
+
+    await api.getLineInviteUrl();
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/settings/line-invite", expect.any(Object));
+  });
+
+  it("updateLineInviteUrl PUTs the url", async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ url: "https://line.me/R/ti/p/@x" }), { status: 200 }));
+
+    await api.updateLineInviteUrl("https://line.me/R/ti/p/@x");
+
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/settings/line-invite");
+    expect(init.method).toBe("PUT");
+    expect(JSON.parse(init.body as string)).toEqual({ url: "https://line.me/R/ti/p/@x" });
   });
 });
