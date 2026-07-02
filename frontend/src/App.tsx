@@ -11,7 +11,12 @@ function tabButtonClass(active: boolean): string {
   }`;
 }
 
+function highlightItemIdFromUrl(): string | null {
+  return new URLSearchParams(window.location.search).get("item");
+}
+
 export function App() {
+  const [highlightItemId] = useState<string | null>(highlightItemIdFromUrl);
   const [tab, setTab] = useState<Tab>("items");
 
   return (
@@ -33,7 +38,7 @@ export function App() {
         </div>
       </header>
       <main className="mx-auto max-w-2xl px-4 py-6">
-        {tab === "items" && <ItemListPage />}
+        {tab === "items" && <ItemListPage highlightItemId={highlightItemId} />}
         {tab === "settings" && <SettingsPage />}
         {tab === "log" && <NotificationLogPage />}
       </main>

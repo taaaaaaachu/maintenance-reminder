@@ -23,11 +23,11 @@ function makeItem(overrides: Partial<Item> = {}): Item {
   };
 }
 
-function renderWithClient() {
+function renderWithClient(highlightItemId?: string | null) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={queryClient}>
-      <ItemListPage />
+      <ItemListPage highlightItemId={highlightItemId} />
     </QueryClientProvider>,
   );
 }
@@ -228,6 +228,34 @@ describe("ItemListPage", () => {
 
     expect(screen.getByText("ロボット掃除機の清掃")).toBeInTheDocument();
     expect(screen.queryByText("洗濯機のフィルター掃除")).not.toBeInTheDocument();
+  });
+
+  it("scrolls to and highlights the item matching highlightItemId", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          makeItem({ id: "item-1", name: "ロボット掃除機の清掃", category: "掃除機" }),
+          makeItem({ id: "item-2", name: "洗濯機のフィルター掃除", category: "洗濯機" }),
+        ]),
+        { status: 200 },
+      ),
+    );
+    const scrollIntoViewMock = vi.fn();
+    vi.spyOn(Element.prototype, "scrollIntoView").mockImplementation(scrollIntoViewMock);
+
+    renderWithClient("item-2");
+
+    await waitFor(() => {
+      expect(screen.getByText("洗濯機のフィルター掃除")).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(scrollIntoViewMock).toHaveBeenCalled();
+    });
+
+    // highlighted item stays visible even though a category filter would otherwise hide it
+    expect(screen.queryByLabelText("ジャンルで絞り込み")).toBeInTheDocument();
+
+    scrollIntoViewMock.mockRestore();
   });
 
   it("does not delete the item when the confirm dialog is cancelled", async () => {

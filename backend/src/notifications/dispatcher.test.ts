@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { sendToRecipient } from "./dispatcher.js";
 
-const MESSAGE = { title: "タイトル", body: "本文" };
+const MESSAGE = { title: "タイトル", body: "本文", url: "https://reminder.example.com/?item=item-1" };
 
 describe("sendToRecipient", () => {
   const fetchMock = vi.fn();
@@ -28,6 +28,7 @@ describe("sendToRecipient", () => {
       const body = JSON.parse(init.body as string);
       expect(body.to).toBe("U123");
       expect(body.messages[0].text).toContain("タイトル");
+      expect(body.messages[0].text).toContain(MESSAGE.url);
     });
 
     it("throws when the access token secret is not configured", async () => {
@@ -47,6 +48,7 @@ describe("sendToRecipient", () => {
       expect(body.to).toBe("me@example.com");
       expect(body.from).toBe(env.RESEND_FROM_ADDRESS);
       expect(body.subject).toBe("タイトル");
+      expect(body.text).toContain(MESSAGE.url);
     });
   });
 
@@ -60,6 +62,8 @@ describe("sendToRecipient", () => {
       expect(params.get("user")).toBe("user-key");
       expect(params.get("token")).toBe(env.PUSHOVER_API_TOKEN);
       expect(params.get("title")).toBe("タイトル");
+      expect(params.get("url")).toBe(MESSAGE.url);
+      expect(params.get("url_title")).toBeTruthy();
     });
   });
 

@@ -98,6 +98,7 @@ settingsRouter.post("/notifications/:channel/recipients/:id/test", async (c) => 
     await sendToRecipient(c.env, channel, recipient.identifier, {
       title: "【テスト通知】お手入れリマインダー",
       body: "これはテスト通知です。この通知が届いていれば設定は正しく動作しています。",
+      url: c.env.APP_BASE_URL,
     });
   } catch (error) {
     throw badRequest(error instanceof Error ? error.message : "送信に失敗しました");

@@ -22,15 +22,21 @@ function makeItem(overrides: Partial<Item> = {}): Item {
 
 describe("buildReminderMessage", () => {
   it("includes the item name in the title and the due date in the body", () => {
-    const message = buildReminderMessage(makeItem(), "2026-07-02");
+    const message = buildReminderMessage(makeItem(), "2026-07-02", "https://reminder.example.com");
 
     expect(message.title).toContain("ロボット掃除機のダストボックス清掃");
     expect(message.body).toContain("ロボット掃除機のダストボックス清掃");
     expect(message.body).toContain("2026-07-02");
   });
 
+  it("builds a URL that links back to the item using the given base URL", () => {
+    const message = buildReminderMessage(makeItem({ id: "abc-123" }), "2026-07-02", "https://reminder.example.com");
+
+    expect(message.url).toBe("https://reminder.example.com/?item=abc-123");
+  });
+
   it("uses a pre-notice tone and emoji when notified before the due date", () => {
-    const message = buildReminderMessage(makeItem({ nextDueAt: "2026-07-05" }), "2026-07-02");
+    const message = buildReminderMessage(makeItem({ nextDueAt: "2026-07-05" }), "2026-07-02", "https://reminder.example.com");
 
     expect(message.title).toContain("📅");
     expect(message.title).toContain("あと3日");
@@ -38,14 +44,14 @@ describe("buildReminderMessage", () => {
   });
 
   it("uses a 本日 tone and emoji when due today", () => {
-    const message = buildReminderMessage(makeItem({ nextDueAt: "2026-07-02" }), "2026-07-02");
+    const message = buildReminderMessage(makeItem({ nextDueAt: "2026-07-02" }), "2026-07-02", "https://reminder.example.com");
 
     expect(message.title).toContain("🔔");
     expect(message.title).toContain("本日");
   });
 
   it("uses a mild warning tone within 3 days overdue", () => {
-    const message = buildReminderMessage(makeItem({ nextDueAt: "2026-06-30" }), "2026-07-02");
+    const message = buildReminderMessage(makeItem({ nextDueAt: "2026-06-30" }), "2026-07-02", "https://reminder.example.com");
 
     expect(message.title).toContain("⚠️");
     expect(message.title).toContain("2日経過");
@@ -53,7 +59,7 @@ describe("buildReminderMessage", () => {
   });
 
   it("uses a strong warning tone when overdue by more than 3 days", () => {
-    const message = buildReminderMessage(makeItem({ nextDueAt: "2026-06-20" }), "2026-07-02");
+    const message = buildReminderMessage(makeItem({ nextDueAt: "2026-06-20" }), "2026-07-02", "https://reminder.example.com");
 
     expect(message.title).toContain("🚨");
     expect(message.title).toContain("12日超過");

@@ -4,6 +4,7 @@ import { daysBetweenDateStrings } from "../lib/date.js";
 export interface NotificationMessage {
   title: string;
   body: string;
+  url: string;
 }
 
 function urgencyFor(overdueDays: number): { emoji: string; label: string } {
@@ -26,12 +27,13 @@ function bodyFor(item: Item, overdueDays: number): string {
   return `${item.name} のお手入れ予定日を${overdueDays}日も過ぎています(予定日: ${item.nextDueAt})。早めのお手入れをお願いします。`;
 }
 
-export function buildReminderMessage(item: Item, today: string): NotificationMessage {
+export function buildReminderMessage(item: Item, today: string, baseUrl: string): NotificationMessage {
   const overdueDays = daysBetweenDateStrings(item.nextDueAt, today);
   const { emoji, label } = urgencyFor(overdueDays);
 
   return {
     title: `${emoji}【${label}】${item.name}`,
     body: bodyFor(item, overdueDays),
+    url: `${baseUrl}/?item=${item.id}`,
   };
 }

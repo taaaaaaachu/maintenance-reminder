@@ -1,11 +1,15 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CreateItemInput, Item, UpdateItemInput } from "@maintenance-reminder/shared";
 import * as api from "../api/client.js";
 import { ItemCard } from "../components/ItemCard.js";
 import { ItemFormPage } from "./ItemFormPage.js";
 
-export function ItemListPage() {
+interface ItemListPageProps {
+  highlightItemId?: string | null;
+}
+
+export function ItemListPage({ highlightItemId }: ItemListPageProps) {
   const queryClient = useQueryClient();
   const [isAdding, setIsAdding] = useState(false);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
@@ -17,6 +21,15 @@ export function ItemListPage() {
     () => Array.from(new Set(items.map((item) => item.category).filter((c): c is string => !!c))).sort(),
     [items],
   );
+
+  useEffect(() => {
+    if (highlightItemId) setCategoryFilter("");
+  }, [highlightItemId]);
+
+  useEffect(() => {
+    if (!highlightItemId || items.length === 0) return;
+    document.getElementById(`item-${highlightItemId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlightItemId, items.length]);
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ["items"] });
@@ -112,30 +125,31 @@ export function ItemListPage() {
       )}
 
       <div className="space-y-3">
-        {filteredItems.map((item) =>
-          editingItem?.id === item.id ? (
-            <ItemFormPage
-              key={item.id}
-              initialItem={item}
-              categories={categories}
-              onSubmit={(input) => updateMutation.mutate({ id: item.id, input: input as UpdateItemInput })}
-              onCancel={() => setEditingItem(null)}
-              isSubmitting={updateMutation.isPending}
-            />
-          ) : (
-            <ItemCard
-              key={item.id}
-              item={item}
-              onComplete={() => completeMutation.mutate(item.id)}
-              onSnooze={(days) => snoozeMutation.mutate({ id: item.id, days })}
-              onEdit={() => setEditingItem(item)}
-              onDelete={() => {
-                if (confirm(`「${item.name}」を削除しますか?`)) deleteMutation.mutate(item.id);
-              }}
-              isMutating={completeMutation.isPending || snoozeMutation.isPending}
-            />
-          ),
-        )}
+        {filteredItems.map((item) => (
+          <div key={item.id} id={`item-${item.id}`}>
+            {editingItem?.id === item.id ? (
+              <ItemFormPage
+                initialItem={item}
+                categories={categories}
+                onSubmit={(input) => updateMutation.mutate({ id: item.id, input: input as UpdateItemInput })}
+                onCancel={() => setEditingItem(null)}
+                isSubmitting={updateMutation.isPending}
+              />
+            ) : (
+              <ItemCard
+                item={item}
+                onComplete={() => completeMutation.mutate(item.id)}
+                onSnooze={(days) => snoozeMutation.mutate({ id: item.id, days })}
+                onEdit={() => setEditingItem(item)}
+                onDelete={() => {
+                  if (confirm(`「${item.name}」を削除しますか?`)) deleteMutation.mutate(item.id);
+                }}
+                isMutating={completeMutation.isPending || snoozeMutation.isPending}
+                isHighlighted={item.id === highlightItemId}
+              />
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

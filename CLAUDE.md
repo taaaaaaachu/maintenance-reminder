@@ -34,6 +34,7 @@ npm workspaces モノレポ
 - **ICSのUIDは`{item.id}@ドメイン`で固定**。item.idは不変UUIDなので、これを変えるとGoogle/Appleカレンダー側で予定が重複登録される。
 - **日付はJST基準**。Workers/D1の内部時刻はUTCなので、「今日」の判定は`backend/src/lib/date.ts`のJST変換ヘルパー(`todayJstDateString`等)に必ず集約する。バラバラに`new Date()`で当日判定しない。
 - **D1の外部キーはON DELETE CASCADEが実際に効く**(notification_logはitem削除で連動削除される)。「削除後もログは残る」という前提でコードやテストを書かない。
+- **通知メッセージ内のアプリURLは`env.APP_BASE_URL`(`wrangler.toml`の`[vars]`)から組み立てる**。Cronの`scheduled`ハンドラーにはHTTPリクエストが存在しないため、実行時にドメインを動的検出する手段がない。`backend/src/notifications/templates.ts`の`buildReminderMessage`が`{APP_BASE_URL}/?item={item.id}`形式でリンクを生成し、LINE/メール本文には地の文として、Pushoverは`url`/`url_title`パラメータ(開くボタン)として渡している。フロント側は`App.tsx`が`?item=`クエリを読み取ってアイテム一覧タブを開き、該当カードまでスクロール&ハイライトする(React Router等のルーティングは導入していないため)。
 
 ## ハマりどころ
 

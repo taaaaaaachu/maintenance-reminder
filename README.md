@@ -79,6 +79,7 @@ npx wrangler secret put PUSHOVER_API_TOKEN
 
 - `[[routes]] pattern`(独自ドメインを使わない場合はこの`[[routes]]`ブロックごと削除し、`workers_dev = true`にすると`*.workers.dev`のURLで動きます)
 - `[vars] RESEND_FROM_ADDRESS`
+- `[vars] APP_BASE_URL`(通知メッセージ内のリンクに使われるアプリのURL。上記のドメイン設定と合わせてください)
 
 ### 8. ローカル起動
 

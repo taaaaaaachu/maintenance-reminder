@@ -5,6 +5,7 @@ declare global {
     RESEND_API_KEY: string;
     RESEND_FROM_ADDRESS: string;
     PUSHOVER_API_TOKEN: string;
+    APP_BASE_URL: string;
   }
   namespace Cloudflare {
     interface Env {
@@ -13,6 +14,7 @@ declare global {
       RESEND_API_KEY: string;
       RESEND_FROM_ADDRESS: string;
       PUSHOVER_API_TOKEN: string;
+      APP_BASE_URL: string;
     }
   }
 }

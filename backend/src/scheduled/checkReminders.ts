@@ -32,7 +32,7 @@ export async function checkReminders(env: AppBindings): Promise<void> {
             );
             if (alreadySent) return;
 
-            const message = buildReminderMessage(item, today);
+            const message = buildReminderMessage(item, today, env.APP_BASE_URL);
             try {
               await sendToRecipient(env, channel, recipient.identifier, message);
               await notificationsDb.recordNotificationLog(env.DB, {

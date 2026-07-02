@@ -23,3 +23,4 @@ crons = ["*/30 * * * *"]
 
 [vars]
 RESEND_FROM_ADDRESS = "reminder@example.com"
+APP_BASE_URL = "https://reminder.example.com"

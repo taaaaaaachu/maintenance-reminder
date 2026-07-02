@@ -5,6 +5,7 @@ export interface AppBindings {
   RESEND_API_KEY: string;
   RESEND_FROM_ADDRESS: string;
   PUSHOVER_API_TOKEN: string;
+  APP_BASE_URL: string;
 }
 
 export type HonoEnv = { Bindings: AppBindings };

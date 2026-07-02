@@ -3,8 +3,14 @@ export async function sendPushoverMessage(
   userKey: string,
   title: string,
   message: string,
+  url?: string,
 ): Promise<void> {
-  const body = new URLSearchParams({ token: apiToken, user: userKey, title, message });
+  const params: Record<string, string> = { token: apiToken, user: userKey, title, message };
+  if (url) {
+    params.url = url;
+    params.url_title = "リマインダーを開く";
+  }
+  const body = new URLSearchParams(params);
 
   const res = await fetch("https://api.pushover.net/1/messages.json", {
     method: "POST",
