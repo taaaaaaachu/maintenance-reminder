@@ -7,6 +7,7 @@ import { getConfigValue } from "../db/appConfig.js";
 import { addDaysToDateString, todayJstDateString } from "../lib/date.js";
 import { badRequest, notFound } from "../lib/errors.js";
 import { DEFAULT_NOTIFY_TIME_KEY } from "../lib/configKeys.js";
+import { householdMiddleware } from "../middleware/household.js";
 import type { HonoEnv } from "../types.js";
 
 export const NOTIFY_TIME_REGEX = /^([01]\d|2[0-3]):(00|30)$/;
@@ -41,9 +42,11 @@ const snoozeSchema = z.object({
 
 export const itemsRouter = new Hono<HonoEnv>();
 
+itemsRouter.use("*", householdMiddleware);
+
 itemsRouter.get("/", async (c) => {
   const includeInactive = c.req.query("includeInactive") === "true";
-  const items = await itemsDb.listItems(c.env.DB, includeInactive);
+  const items = await itemsDb.listItems(c.env.DB, c.get("householdId"), includeInactive);
   return c.json(items);
 });
 
@@ -51,11 +54,13 @@ itemsRouter.post("/", async (c) => {
   const parsed = createItemSchema.safeParse(await c.req.json());
   if (!parsed.success) throw badRequest(parsed.error.message);
   const input = parsed.data;
+  const householdId = c.get("householdId");
   const lastDoneAt = input.lastDoneAt ?? todayJstDateString();
   const notifyTime =
-    input.notifyTime ?? (await getConfigValue(c.env.DB, DEFAULT_NOTIFY_TIME_KEY)) ?? DEFAULT_NOTIFY_TIME;
+    input.notifyTime ?? (await getConfigValue(c.env.DB, householdId, DEFAULT_NOTIFY_TIME_KEY)) ?? DEFAULT_NOTIFY_TIME;
   const item = await itemsDb.createItem(c.env.DB, {
     id: crypto.randomUUID(),
+    householdId,
     name: input.name,
     category: input.category ?? null,
     intervalDays: input.intervalDays,
@@ -69,7 +74,7 @@ itemsRouter.post("/", async (c) => {
 });
 
 itemsRouter.get("/:id", async (c) => {
-  const item = await itemsDb.getItem(c.env.DB, c.req.param("id"));
+  const item = await itemsDb.getItem(c.env.DB, c.get("householdId"), c.req.param("id"));
   if (!item) throw notFound("Item not found");
   return c.json(item);
 });
@@ -77,18 +82,24 @@ itemsRouter.get("/:id", async (c) => {
 itemsRouter.patch("/:id", async (c) => {
   const parsed = updateItemSchema.safeParse(await c.req.json());
   if (!parsed.success) throw badRequest(parsed.error.message);
-  const item = await itemsDb.updateItem(c.env.DB, c.req.param("id"), parsed.data);
+  const item = await itemsDb.updateItem(c.env.DB, c.get("householdId"), c.req.param("id"), parsed.data);
   if (!item) throw notFound("Item not found");
   return c.json(item);
 });
 
 itemsRouter.delete("/:id", async (c) => {
-  await itemsDb.deleteItem(c.env.DB, c.req.param("id"));
+  await itemsDb.deleteItem(c.env.DB, c.get("householdId"), c.req.param("id"));
   return c.body(null, 204);
 });
 
 itemsRouter.post("/:id/complete", async (c) => {
-  const item = await itemsDb.completeItem(c.env.DB, c.req.param("id"), todayJstDateString());
+  const item = await itemsDb.completeItem(
+    c.env.DB,
+    c.get("householdId"),
+    c.req.param("id"),
+    todayJstDateString(),
+    c.get("actorEmail"),
+  );
   if (!item) throw notFound("Item not found");
   return c.json(item);
 });
@@ -98,14 +109,15 @@ itemsRouter.post("/:id/snooze", async (c) => {
   const parsed = snoozeSchema.safeParse(body);
   if (!parsed.success) throw badRequest(parsed.error.message);
   const days = parsed.data.days ?? DEFAULT_SNOOZE_DAYS;
-  const item = await itemsDb.snoozeItem(c.env.DB, c.req.param("id"), days);
+  const item = await itemsDb.snoozeItem(c.env.DB, c.get("householdId"), c.req.param("id"), days, c.get("actorEmail"));
   if (!item) throw notFound("Item not found");
   return c.json(item);
 });
 
 itemsRouter.get("/:id/history", async (c) => {
-  const item = await itemsDb.getItem(c.env.DB, c.req.param("id"));
+  const householdId = c.get("householdId");
+  const item = await itemsDb.getItem(c.env.DB, householdId, c.req.param("id"));
   if (!item) throw notFound("Item not found");
-  const history = await historyDb.listHistory(c.env.DB, c.req.param("id"));
+  const history = await historyDb.listHistory(c.env.DB, householdId, c.req.param("id"));
   return c.json(history);
 });

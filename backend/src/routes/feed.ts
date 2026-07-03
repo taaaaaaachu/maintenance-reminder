@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import * as itemsDb from "../db/queries.js";
-import { getOrCreateIcsFeedToken } from "../ics/token.js";
+import { getHouseholdIdByIcsToken } from "../db/appConfig.js";
 import { generateIcsFeed } from "../ics/generate.js";
 import type { HonoEnv } from "../types.js";
 
@@ -8,13 +8,13 @@ export const feedRouter = new Hono<HonoEnv>();
 
 feedRouter.get("/:tokenFile", async (c) => {
   const requestedToken = c.req.param("tokenFile").replace(/\.ics$/, "");
-  const validToken = await getOrCreateIcsFeedToken(c.env.DB);
+  const householdId = await getHouseholdIdByIcsToken(c.env.DB, requestedToken);
 
-  if (requestedToken !== validToken) {
+  if (!householdId) {
     return c.notFound();
   }
 
-  const items = await itemsDb.listItems(c.env.DB, false);
+  const items = await itemsDb.listItems(c.env.DB, householdId, false);
   const domain = new URL(c.req.url).hostname;
   const ics = generateIcsFeed(items, domain);
 

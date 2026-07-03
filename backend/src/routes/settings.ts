@@ -7,8 +7,9 @@ import { sendToRecipient } from "../notifications/dispatcher.js";
 import { getOrCreateIcsFeedToken, regenerateIcsFeedToken } from "../ics/token.js";
 import { getConfigValue, setConfigValue } from "../db/appConfig.js";
 import { badRequest, notFound } from "../lib/errors.js";
-import { DEFAULT_NOTIFY_TIME_KEY, LINE_INVITE_URL_KEY } from "../lib/configKeys.js";
+import { DEFAULT_NOTIFY_TIME_KEY } from "../lib/configKeys.js";
 import { DEFAULT_NOTIFY_TIME, NOTIFY_TIME_REGEX } from "./items.js";
+import { householdMiddleware } from "../middleware/household.js";
 import type { HonoEnv } from "../types.js";
 
 const RECIPIENT_IDENTIFIER_SCHEMAS: Record<NotificationChannel, z.ZodType<string>> = {
@@ -26,10 +27,6 @@ const addRecipientSchema = z.object({
   label: z.string().max(100).nullable().optional(),
 });
 
-const lineInviteSchema = z.object({
-  url: z.string().url(),
-});
-
 const defaultNotifyTimeSchema = z.object({
   time: z.string().regex(NOTIFY_TIME_REGEX, "HH:00またはHH:30の形式で指定してください"),
 });
@@ -40,8 +37,10 @@ function isNotificationChannel(value: string): value is NotificationChannel {
 
 export const settingsRouter = new Hono<HonoEnv>();
 
+settingsRouter.use("*", householdMiddleware);
+
 settingsRouter.get("/notifications", async (c) => {
-  const settings = await notificationsDb.listNotificationSettings(c.env.DB);
+  const settings = await notificationsDb.listNotificationSettings(c.env.DB, c.get("householdId"));
   return c.json(settings);
 });
 
@@ -52,7 +51,12 @@ settingsRouter.put("/notifications/:channel", async (c) => {
   const parsed = updateSettingSchema.safeParse(await c.req.json());
   if (!parsed.success) throw badRequest(parsed.error.message);
 
-  const updated = await notificationsDb.setNotificationEnabled(c.env.DB, channel, parsed.data.isEnabled);
+  const updated = await notificationsDb.setNotificationEnabled(
+    c.env.DB,
+    c.get("householdId"),
+    channel,
+    parsed.data.isEnabled,
+  );
   return c.json(updated);
 });
 
@@ -60,7 +64,7 @@ settingsRouter.get("/notifications/:channel/recipients", async (c) => {
   const channel = c.req.param("channel");
   if (!isNotificationChannel(channel)) throw badRequest("不明な通知チャネルです");
 
-  const recipients = await notificationsDb.listRecipients(c.env.DB, channel);
+  const recipients = await notificationsDb.listRecipients(c.env.DB, c.get("householdId"), channel);
   return c.json(recipients);
 });
 
@@ -76,6 +80,7 @@ settingsRouter.post("/notifications/:channel/recipients", async (c) => {
 
   const recipient = await notificationsDb.addRecipient(
     c.env.DB,
+    c.get("householdId"),
     channel,
     identifierParsed.data,
     parsed.data.label ?? null,
@@ -87,7 +92,7 @@ settingsRouter.delete("/notifications/:channel/recipients/:id", async (c) => {
   const channel = c.req.param("channel");
   if (!isNotificationChannel(channel)) throw badRequest("不明な通知チャネルです");
 
-  await notificationsDb.removeRecipient(c.env.DB, channel, c.req.param("id"));
+  await notificationsDb.removeRecipient(c.env.DB, c.get("householdId"), channel, c.req.param("id"));
   return c.body(null, 204);
 });
 
@@ -95,7 +100,7 @@ settingsRouter.post("/notifications/:channel/recipients/:id/test", async (c) => 
   const channel = c.req.param("channel");
   if (!isNotificationChannel(channel)) throw badRequest("不明な通知チャネルです");
 
-  const recipient = await notificationsDb.getRecipient(c.env.DB, channel, c.req.param("id"));
+  const recipient = await notificationsDb.getRecipient(c.env.DB, c.get("householdId"), channel, c.req.param("id"));
   if (!recipient) throw notFound("宛先が見つかりません");
 
   try {
@@ -112,17 +117,17 @@ settingsRouter.post("/notifications/:channel/recipients/:id/test", async (c) => 
 });
 
 settingsRouter.get("/ics-feed", async (c) => {
-  const token = await getOrCreateIcsFeedToken(c.env.DB);
+  const token = await getOrCreateIcsFeedToken(c.env.DB, c.get("householdId"));
   return c.json({ token });
 });
 
 settingsRouter.post("/ics-feed/regenerate", async (c) => {
-  const token = await regenerateIcsFeedToken(c.env.DB);
+  const token = await regenerateIcsFeedToken(c.env.DB, c.get("householdId"));
   return c.json({ token });
 });
 
 settingsRouter.get("/default-notify-time", async (c) => {
-  const time = (await getConfigValue(c.env.DB, DEFAULT_NOTIFY_TIME_KEY)) ?? DEFAULT_NOTIFY_TIME;
+  const time = (await getConfigValue(c.env.DB, c.get("householdId"), DEFAULT_NOTIFY_TIME_KEY)) ?? DEFAULT_NOTIFY_TIME;
   return c.json({ time });
 });
 
@@ -130,19 +135,10 @@ settingsRouter.put("/default-notify-time", async (c) => {
   const parsed = defaultNotifyTimeSchema.safeParse(await c.req.json());
   if (!parsed.success) throw badRequest(parsed.error.message);
 
-  await setConfigValue(c.env.DB, DEFAULT_NOTIFY_TIME_KEY, parsed.data.time);
+  await setConfigValue(c.env.DB, c.get("householdId"), DEFAULT_NOTIFY_TIME_KEY, parsed.data.time);
   return c.json({ time: parsed.data.time });
 });
 
 settingsRouter.get("/line-invite", async (c) => {
-  const url = await getConfigValue(c.env.DB, LINE_INVITE_URL_KEY);
-  return c.json({ url });
-});
-
-settingsRouter.put("/line-invite", async (c) => {
-  const parsed = lineInviteSchema.safeParse(await c.req.json());
-  if (!parsed.success) throw badRequest(parsed.error.message);
-
-  await setConfigValue(c.env.DB, LINE_INVITE_URL_KEY, parsed.data.url);
-  return c.json({ url: parsed.data.url });
+  return c.json({ url: c.env.LINE_INVITE_URL });
 });

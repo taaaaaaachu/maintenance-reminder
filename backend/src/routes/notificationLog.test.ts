@@ -1,5 +1,6 @@
 import { env, exports } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
+import { authHeaders, setupTestHousehold, TEST_HOUSEHOLD_EMAIL, TEST_HOUSEHOLD_ID } from "../../test/helpers.js";
 import * as itemsDb from "../db/queries.js";
 import * as notificationsDb from "../db/notifications.js";
 
@@ -9,15 +10,30 @@ async function clearAll() {
   await env.DB.prepare("DELETE FROM notification_log").run();
   await env.DB.prepare("DELETE FROM notification_recipients").run();
   await env.DB.prepare("DELETE FROM items").run();
+  await env.DB.prepare("DELETE FROM household_members").run();
+  await env.DB.prepare("DELETE FROM households").run();
+  await setupTestHousehold();
 }
 
 beforeEach(async () => {
   await clearAll();
 });
 
+function authFetch(url: string, options?: RequestInit, email: string = TEST_HOUSEHOLD_EMAIL) {
+  return exports.default.fetch(url, {
+    ...options,
+    headers: { ...authHeaders(email), ...options?.headers },
+  });
+}
+
 describe("GET /api/notification-log", () => {
-  it("returns an empty array when nothing has been logged yet", async () => {
+  it("requires authentication", async () => {
     const res = await exports.default.fetch(`${BASE_URL}/api/notification-log`);
+    expect(res.status).toBe(401);
+  });
+
+  it("returns an empty array when nothing has been logged yet", async () => {
+    const res = await authFetch(`${BASE_URL}/api/notification-log`);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual([]);
   });
@@ -25,6 +41,7 @@ describe("GET /api/notification-log", () => {
   it("joins item name and recipient label, and orders by most recent first", async () => {
     const item = await itemsDb.createItem(env.DB, {
       id: "item-1",
+      householdId: TEST_HOUSEHOLD_ID,
       name: "ロボット掃除機の清掃",
       category: null,
       intervalDays: 7,
@@ -34,15 +51,17 @@ describe("GET /api/notification-log", () => {
       lastDoneAt: "2026-06-25",
       nextDueAt: "2026-07-02",
     });
-    await notificationsDb.addRecipient(env.DB, "pushover", "user-key-1", "父");
+    await notificationsDb.addRecipient(env.DB, TEST_HOUSEHOLD_ID, "pushover", "user-key-1", "父");
 
     await notificationsDb.recordNotificationLog(env.DB, {
+      householdId: TEST_HOUSEHOLD_ID,
       itemId: item.id,
       channel: "pushover",
       recipientIdentifier: "user-key-1",
       status: "success",
     });
     await notificationsDb.recordNotificationLog(env.DB, {
+      householdId: TEST_HOUSEHOLD_ID,
       itemId: item.id,
       channel: "pushover",
       recipientIdentifier: "user-key-1",
@@ -50,7 +69,7 @@ describe("GET /api/notification-log", () => {
       errorMessage: "timeout",
     });
 
-    const res = await exports.default.fetch(`${BASE_URL}/api/notification-log`);
+    const res = await authFetch(`${BASE_URL}/api/notification-log`);
     const entries = (await res.json()) as Array<Record<string, unknown>>;
 
     expect(entries).toHaveLength(2);
@@ -67,6 +86,7 @@ describe("GET /api/notification-log", () => {
   it("cascades: deleting the item also removes its notification log entries", async () => {
     const item = await itemsDb.createItem(env.DB, {
       id: "item-2",
+      householdId: TEST_HOUSEHOLD_ID,
       name: "洗濯機の掃除",
       category: null,
       intervalDays: 7,
@@ -77,20 +97,22 @@ describe("GET /api/notification-log", () => {
       nextDueAt: "2026-07-02",
     });
     await notificationsDb.recordNotificationLog(env.DB, {
+      householdId: TEST_HOUSEHOLD_ID,
       itemId: item.id,
       channel: "email",
       recipientIdentifier: "me@example.com",
       status: "success",
     });
-    await itemsDb.deleteItem(env.DB, item.id);
+    await itemsDb.deleteItem(env.DB, TEST_HOUSEHOLD_ID, item.id);
 
-    const res = await exports.default.fetch(`${BASE_URL}/api/notification-log`);
+    const res = await authFetch(`${BASE_URL}/api/notification-log`);
     expect(await res.json()).toEqual([]);
   });
 
   it("respects the limit query parameter", async () => {
     const item = await itemsDb.createItem(env.DB, {
       id: "item-3",
+      householdId: TEST_HOUSEHOLD_ID,
       name: "test",
       category: null,
       intervalDays: 7,
@@ -102,6 +124,7 @@ describe("GET /api/notification-log", () => {
     });
     for (let i = 0; i < 3; i++) {
       await notificationsDb.recordNotificationLog(env.DB, {
+        householdId: TEST_HOUSEHOLD_ID,
         itemId: item.id,
         channel: "email",
         recipientIdentifier: "me@example.com",
@@ -109,7 +132,33 @@ describe("GET /api/notification-log", () => {
       });
     }
 
-    const res = await exports.default.fetch(`${BASE_URL}/api/notification-log?limit=2`);
+    const res = await authFetch(`${BASE_URL}/api/notification-log?limit=2`);
     expect(await res.json()).toHaveLength(2);
+  });
+
+  it("does not include entries belonging to a different household", async () => {
+    const item = await itemsDb.createItem(env.DB, {
+      id: "item-4",
+      householdId: TEST_HOUSEHOLD_ID,
+      name: "test",
+      category: null,
+      intervalDays: 7,
+      notifyDaysBefore: 0,
+      notifyTime: "07:00",
+      memo: null,
+      lastDoneAt: "2026-06-25",
+      nextDueAt: "2026-07-02",
+    });
+    await notificationsDb.recordNotificationLog(env.DB, {
+      householdId: TEST_HOUSEHOLD_ID,
+      itemId: item.id,
+      channel: "email",
+      recipientIdentifier: "me@example.com",
+      status: "success",
+    });
+    await setupTestHousehold("other-household", "other@example.com");
+
+    const res = await authFetch(`${BASE_URL}/api/notification-log`, undefined, "other@example.com");
+    expect(await res.json()).toEqual([]);
   });
 });

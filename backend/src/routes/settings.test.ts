@@ -1,5 +1,6 @@
 import { env, exports } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { authHeaders, setupTestHousehold, TEST_HOUSEHOLD_EMAIL } from "../../test/helpers.js";
 
 const BASE_URL = "https://example.com";
 
@@ -8,14 +9,24 @@ async function clearSettings() {
   await env.DB.prepare("DELETE FROM notification_recipients").run();
   await env.DB.prepare("DELETE FROM notification_settings").run();
   await env.DB.prepare("DELETE FROM app_config").run();
+  await env.DB.prepare("DELETE FROM household_members").run();
+  await env.DB.prepare("DELETE FROM households").run();
+  await setupTestHousehold();
 }
 
 beforeEach(async () => {
   await clearSettings();
 });
 
+function authFetch(url: string, options?: RequestInit, email: string = TEST_HOUSEHOLD_EMAIL) {
+  return exports.default.fetch(url, {
+    ...options,
+    headers: { ...authHeaders(email), ...options?.headers },
+  });
+}
+
 async function addRecipient(channel: string, identifier: string, label: string | null = null) {
-  const res = await exports.default.fetch(`${BASE_URL}/api/settings/notifications/${channel}/recipients`, {
+  const res = await authFetch(`${BASE_URL}/api/settings/notifications/${channel}/recipients`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ identifier, label }),
@@ -24,8 +35,13 @@ async function addRecipient(channel: string, identifier: string, label: string |
 }
 
 describe("GET /api/settings/notifications", () => {
-  it("returns a disabled default entry for every channel", async () => {
+  it("requires authentication", async () => {
     const res = await exports.default.fetch(`${BASE_URL}/api/settings/notifications`);
+    expect(res.status).toBe(401);
+  });
+
+  it("returns a disabled default entry for every channel", async () => {
+    const res = await authFetch(`${BASE_URL}/api/settings/notifications`);
     const settings = (await res.json()) as Array<{ channel: string; isEnabled: boolean }>;
 
     expect(res.status).toBe(200);
@@ -36,7 +52,7 @@ describe("GET /api/settings/notifications", () => {
 
 describe("PUT /api/settings/notifications/:channel", () => {
   it("toggles the channel on and off", async () => {
-    const res = await exports.default.fetch(`${BASE_URL}/api/settings/notifications/pushover`, {
+    const res = await authFetch(`${BASE_URL}/api/settings/notifications/pushover`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isEnabled: true }),
@@ -48,7 +64,7 @@ describe("PUT /api/settings/notifications/:channel", () => {
   });
 
   it("rejects an unknown channel with 400", async () => {
-    const res = await exports.default.fetch(`${BASE_URL}/api/settings/notifications/unknown`, {
+    const res = await authFetch(`${BASE_URL}/api/settings/notifications/unknown`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isEnabled: false }),
@@ -63,7 +79,7 @@ describe("recipients CRUD", () => {
     expect(res.status).toBe(201);
     expect(json).toMatchObject({ identifier: "me@example.com", label: "自分" });
 
-    const listRes = await exports.default.fetch(`${BASE_URL}/api/settings/notifications/email/recipients`);
+    const listRes = await authFetch(`${BASE_URL}/api/settings/notifications/email/recipients`);
     const list = (await listRes.json()) as unknown[];
     expect(list).toHaveLength(1);
   });
@@ -81,14 +97,25 @@ describe("recipients CRUD", () => {
   it("removes a recipient", async () => {
     const { json } = await addRecipient("pushover", "user-key-1");
 
-    const deleteRes = await exports.default.fetch(
-      `${BASE_URL}/api/settings/notifications/pushover/recipients/${json.id}`,
-      { method: "DELETE" },
-    );
+    const deleteRes = await authFetch(`${BASE_URL}/api/settings/notifications/pushover/recipients/${json.id}`, {
+      method: "DELETE",
+    });
     expect(deleteRes.status).toBe(204);
 
-    const listRes = await exports.default.fetch(`${BASE_URL}/api/settings/notifications/pushover/recipients`);
+    const listRes = await authFetch(`${BASE_URL}/api/settings/notifications/pushover/recipients`);
     expect(await listRes.json()).toEqual([]);
+  });
+
+  it("does not list recipients belonging to a different household", async () => {
+    await addRecipient("email", "mine@example.com");
+    await setupTestHousehold("other-household", "other@example.com");
+
+    const res = await authFetch(
+      `${BASE_URL}/api/settings/notifications/email/recipients`,
+      undefined,
+      "other@example.com",
+    );
+    expect(await res.json()).toEqual([]);
   });
 });
 
@@ -106,7 +133,7 @@ describe("POST /api/settings/notifications/:channel/recipients/:id/test", () => 
   });
 
   it("returns 404 when the recipient does not exist", async () => {
-    const res = await exports.default.fetch(`${BASE_URL}/api/settings/notifications/line/recipients/missing/test`, {
+    const res = await authFetch(`${BASE_URL}/api/settings/notifications/line/recipients/missing/test`, {
       method: "POST",
     });
     expect(res.status).toBe(404);
@@ -116,10 +143,9 @@ describe("POST /api/settings/notifications/:channel/recipients/:id/test", () => 
   it("sends a test notification to the specified recipient", async () => {
     const { json } = await addRecipient("pushover", "user-key-1");
 
-    const res = await exports.default.fetch(
-      `${BASE_URL}/api/settings/notifications/pushover/recipients/${json.id}/test`,
-      { method: "POST" },
-    );
+    const res = await authFetch(`${BASE_URL}/api/settings/notifications/pushover/recipients/${json.id}/test`, {
+      method: "POST",
+    });
 
     expect(res.status).toBe(200);
     expect(fetchMock).toHaveBeenCalledOnce();
@@ -129,10 +155,9 @@ describe("POST /api/settings/notifications/:channel/recipients/:id/test", () => 
     const { json } = await addRecipient("pushover", "user-key-1");
     fetchMock.mockResolvedValue(new Response("nope", { status: 500 }));
 
-    const res = await exports.default.fetch(
-      `${BASE_URL}/api/settings/notifications/pushover/recipients/${json.id}/test`,
-      { method: "POST" },
-    );
+    const res = await authFetch(`${BASE_URL}/api/settings/notifications/pushover/recipients/${json.id}/test`, {
+      method: "POST",
+    });
 
     expect(res.status).toBe(400);
   });
@@ -140,7 +165,7 @@ describe("POST /api/settings/notifications/:channel/recipients/:id/test", () => 
 
 describe("GET /api/settings/ics-feed", () => {
   it("returns a token, creating one if it doesn't exist yet", async () => {
-    const res = await exports.default.fetch(`${BASE_URL}/api/settings/ics-feed`);
+    const res = await authFetch(`${BASE_URL}/api/settings/ics-feed`);
     const json = (await res.json()) as { token: string };
 
     expect(res.status).toBe(200);
@@ -148,24 +173,28 @@ describe("GET /api/settings/ics-feed", () => {
   });
 
   it("returns the same token across requests", async () => {
-    const first = (await (await exports.default.fetch(`${BASE_URL}/api/settings/ics-feed`)).json()) as {
-      token: string;
-    };
-    const second = (await (await exports.default.fetch(`${BASE_URL}/api/settings/ics-feed`)).json()) as {
-      token: string;
-    };
+    const first = (await (await authFetch(`${BASE_URL}/api/settings/ics-feed`)).json()) as { token: string };
+    const second = (await (await authFetch(`${BASE_URL}/api/settings/ics-feed`)).json()) as { token: string };
 
     expect(second.token).toBe(first.token);
+  });
+
+  it("issues a different token for a different household", async () => {
+    await setupTestHousehold("other-household", "other@example.com");
+    const mine = (await (await authFetch(`${BASE_URL}/api/settings/ics-feed`)).json()) as { token: string };
+    const theirs = (await (
+      await authFetch(`${BASE_URL}/api/settings/ics-feed`, undefined, "other@example.com")
+    ).json()) as { token: string };
+
+    expect(theirs.token).not.toBe(mine.token);
   });
 });
 
 describe("POST /api/settings/ics-feed/regenerate", () => {
   it("returns a new token different from the previous one", async () => {
-    const before = (await (await exports.default.fetch(`${BASE_URL}/api/settings/ics-feed`)).json()) as {
-      token: string;
-    };
+    const before = (await (await authFetch(`${BASE_URL}/api/settings/ics-feed`)).json()) as { token: string };
 
-    const res = await exports.default.fetch(`${BASE_URL}/api/settings/ics-feed/regenerate`, { method: "POST" });
+    const res = await authFetch(`${BASE_URL}/api/settings/ics-feed/regenerate`, { method: "POST" });
     const after = (await res.json()) as { token: string };
 
     expect(res.status).toBe(200);
@@ -175,12 +204,12 @@ describe("POST /api/settings/ics-feed/regenerate", () => {
 
 describe("GET/PUT /api/settings/default-notify-time", () => {
   it("returns 07:00 when not yet configured", async () => {
-    const res = await exports.default.fetch(`${BASE_URL}/api/settings/default-notify-time`);
+    const res = await authFetch(`${BASE_URL}/api/settings/default-notify-time`);
     expect(await res.json()).toEqual({ time: "07:00" });
   });
 
   it("saves and returns the configured default", async () => {
-    const putRes = await exports.default.fetch(`${BASE_URL}/api/settings/default-notify-time`, {
+    const putRes = await authFetch(`${BASE_URL}/api/settings/default-notify-time`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ time: "20:30" }),
@@ -188,44 +217,36 @@ describe("GET/PUT /api/settings/default-notify-time", () => {
     expect(putRes.status).toBe(200);
     expect(await putRes.json()).toEqual({ time: "20:30" });
 
-    const getRes = await exports.default.fetch(`${BASE_URL}/api/settings/default-notify-time`);
+    const getRes = await authFetch(`${BASE_URL}/api/settings/default-notify-time`);
     expect(await getRes.json()).toEqual({ time: "20:30" });
   });
 
   it("rejects a time that is not on a 30-minute boundary", async () => {
-    const res = await exports.default.fetch(`${BASE_URL}/api/settings/default-notify-time`, {
+    const res = await authFetch(`${BASE_URL}/api/settings/default-notify-time`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ time: "07:15" }),
     });
     expect(res.status).toBe(400);
   });
+
+  it("keeps the default independent per household", async () => {
+    await authFetch(`${BASE_URL}/api/settings/default-notify-time`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ time: "20:30" }),
+    });
+    await setupTestHousehold("other-household", "other@example.com");
+
+    const res = await authFetch(`${BASE_URL}/api/settings/default-notify-time`, undefined, "other@example.com");
+    expect(await res.json()).toEqual({ time: "07:00" });
+  });
 });
 
-describe("GET/PUT /api/settings/line-invite", () => {
-  it("returns null when not yet configured", async () => {
-    const res = await exports.default.fetch(`${BASE_URL}/api/settings/line-invite`);
-    expect(await res.json()).toEqual({ url: null });
-  });
-
-  it("saves and returns the invite URL", async () => {
-    const putRes = await exports.default.fetch(`${BASE_URL}/api/settings/line-invite`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: "https://line.me/R/ti/p/@abc1234" }),
-    });
-    expect(putRes.status).toBe(200);
-
-    const getRes = await exports.default.fetch(`${BASE_URL}/api/settings/line-invite`);
-    expect(await getRes.json()).toEqual({ url: "https://line.me/R/ti/p/@abc1234" });
-  });
-
-  it("rejects an invalid URL", async () => {
-    const res = await exports.default.fetch(`${BASE_URL}/api/settings/line-invite`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: "not-a-url" }),
-    });
-    expect(res.status).toBe(400);
+describe("GET /api/settings/line-invite", () => {
+  it("returns the configured invite URL from the environment", async () => {
+    const res = await authFetch(`${BASE_URL}/api/settings/line-invite`);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ url: env.LINE_INVITE_URL });
   });
 });
