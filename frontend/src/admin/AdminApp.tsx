@@ -47,8 +47,11 @@ export function AdminApp() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white px-4 py-3">
+      <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
         <h1 className="text-xl font-bold text-slate-900">世帯管理</h1>
+        <a href="/cdn-cgi/access/logout" className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100">
+          ログアウト
+        </a>
       </header>
       <main className="mx-auto max-w-2xl space-y-4 px-4 py-6">
         <form

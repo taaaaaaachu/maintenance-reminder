@@ -28,7 +28,7 @@ export function App() {
       <header className="border-b border-slate-200 bg-white px-4 py-3">
         <div className="mx-auto flex max-w-2xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-xl font-bold text-slate-900">お手入れリマインダー</h1>
-          <nav className="flex flex-wrap gap-2">
+          <nav className="flex flex-wrap items-center gap-2">
             <button type="button" onClick={() => setTab("items")} className={tabButtonClass(tab === "items")}>
               アイテム
             </button>
@@ -38,6 +38,9 @@ export function App() {
             <button type="button" onClick={() => setTab("log")} className={tabButtonClass(tab === "log")}>
               通知履歴
             </button>
+            <a href="/cdn-cgi/access/logout" className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100">
+              ログアウト
+            </a>
           </nav>
         </div>
       </header>

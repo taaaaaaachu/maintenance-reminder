@@ -72,4 +72,14 @@ describe("App", () => {
       expect(screen.getByRole("heading", { name: "通知履歴" })).toBeInTheDocument();
     });
   });
+
+  it("shows a logout link pointing to the Cloudflare Access logout endpoint", async () => {
+    renderApp();
+
+    await waitFor(() => {
+      expect(screen.getByText("お手入れアイテム一覧")).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole("link", { name: "ログアウト" })).toHaveAttribute("href", "/cdn-cgi/access/logout");
+  });
 });

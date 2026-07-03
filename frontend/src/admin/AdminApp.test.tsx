@@ -41,6 +41,16 @@ describe("AdminApp", () => {
     expect(screen.getByText("父 (father@example.com)")).toBeInTheDocument();
   });
 
+  it("shows a logout link pointing to the Cloudflare Access logout endpoint", async () => {
+    fetchMock.mockResolvedValue(new Response(emptyHouseholds, { status: 200 }));
+
+    renderWithClient();
+
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: "ログアウト" })).toHaveAttribute("href", "/cdn-cgi/access/logout");
+    });
+  });
+
   it("shows a placeholder when a household has no members yet", async () => {
     fetchMock.mockResolvedValue(
       new Response(
