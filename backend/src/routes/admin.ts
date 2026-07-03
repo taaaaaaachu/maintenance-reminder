@@ -69,3 +69,12 @@ adminRouter.post("/households/:id/invites", async (c) => {
   const code = await invitesDb.createInvite(c.env.DB, householdId, daysFromNowIso(INVITE_EXPIRES_IN_DAYS));
   return c.json({ code }, 201);
 });
+
+adminRouter.delete("/households/:id", async (c) => {
+  const householdId = c.req.param("id");
+  const household = await householdsDb.getHousehold(c.env.DB, householdId);
+  if (!household) throw notFound("household not found");
+
+  await householdsDb.deleteHousehold(c.env.DB, householdId);
+  return c.body(null, 204);
+});

@@ -67,6 +67,23 @@ export async function getHousehold(db: D1Database, id: string): Promise<Househol
   };
 }
 
+/**
+ * items/notification_recipients/notification_settings/app_configはhousehold_idの
+ * FOREIGN KEYにON DELETE CASCADEを付けていないため明示的に削除する。itemsを先に削除すれば
+ * notification_log/item_historyはitem_idのON DELETE CASCADEで連動削除される。
+ * household_members/household_invitesはhouseholdsへのON DELETE CASCADEが効くため
+ * 明示的な削除は不要。
+ */
+export async function deleteHousehold(db: D1Database, id: string): Promise<void> {
+  await db.batch([
+    db.prepare("DELETE FROM items WHERE household_id = ?").bind(id),
+    db.prepare("DELETE FROM notification_recipients WHERE household_id = ?").bind(id),
+    db.prepare("DELETE FROM notification_settings WHERE household_id = ?").bind(id),
+    db.prepare("DELETE FROM app_config WHERE household_id = ?").bind(id),
+    db.prepare("DELETE FROM households WHERE id = ?").bind(id),
+  ]);
+}
+
 export async function listHouseholds(db: D1Database): Promise<Household[]> {
   const { results: householdRows } = await db
     .prepare("SELECT * FROM households ORDER BY created_at ASC")

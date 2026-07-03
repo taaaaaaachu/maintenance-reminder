@@ -156,4 +156,48 @@ describe("AdminApp", () => {
     expect(url).toBe("/api/admin/households/h1/invites");
     expect(init.method).toBe("POST");
   });
+
+  it("deletes a household when the deletion is confirmed", async () => {
+    fetchMock.mockResolvedValueOnce(new Response(oneHousehold, { status: 200 }));
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const user = userEvent.setup();
+
+    renderWithClient();
+    await waitFor(() => {
+      expect(screen.getByText("実家")).toBeInTheDocument();
+    });
+
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    fetchMock.mockResolvedValueOnce(new Response(emptyHouseholds, { status: 200 }));
+
+    await user.click(screen.getByRole("button", { name: "削除" }));
+
+    await waitFor(() => {
+      expect(screen.queryByText("実家")).not.toBeInTheDocument();
+    });
+
+    const [url, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect(url).toBe("/api/admin/households/h1");
+    expect(init.method).toBe("DELETE");
+
+    confirmSpy.mockRestore();
+  });
+
+  it("does not delete a household when the confirmation is cancelled", async () => {
+    fetchMock.mockResolvedValue(new Response(oneHousehold, { status: 200 }));
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const user = userEvent.setup();
+
+    renderWithClient();
+    await waitFor(() => {
+      expect(screen.getByText("実家")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "削除" }));
+
+    expect(screen.getByText("実家")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    confirmSpy.mockRestore();
+  });
 });

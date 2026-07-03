@@ -38,6 +38,11 @@ export function AdminApp() {
     },
   });
 
+  const deleteHouseholdMutation = useMutation({
+    mutationFn: (householdId: string) => adminApi.deleteHousehold(householdId),
+    onSuccess: () => invalidate(),
+  });
+
   if (householdsQuery.isLoading) return <p className="p-4 text-slate-500">読み込み中...</p>;
   if (householdsQuery.isError) {
     return <p className="p-4 text-red-600">読み込みに失敗しました: {String(householdsQuery.error)}</p>;
@@ -87,7 +92,25 @@ export function AdminApp() {
             const issuedCode = issuedCodes[household.id];
             return (
               <div key={household.id} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                <h3 className="text-base font-semibold text-slate-900">{household.name}</h3>
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="text-base font-semibold text-slate-900">{household.name}</h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (
+                        confirm(
+                          `「${household.name}」を削除しますか?\nこの世帯のアイテム・通知履歴・通知設定もすべて完全に削除され、元に戻せません。`,
+                        )
+                      ) {
+                        deleteHouseholdMutation.mutate(household.id);
+                      }
+                    }}
+                    disabled={deleteHouseholdMutation.isPending}
+                    className="shrink-0 rounded-md px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                  >
+                    削除
+                  </button>
+                </div>
 
                 <ul className="mt-2 space-y-1 text-sm text-slate-600">
                   {household.members.map((member) => (

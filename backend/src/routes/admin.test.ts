@@ -171,3 +171,41 @@ describe("POST /api/admin/households/:id/invites", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("DELETE /api/admin/households/:id", () => {
+  it("deletes the household", async () => {
+    const createRes = await adminFetch(`${BASE_URL}/api/admin/households`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "実家" }),
+    });
+    const household = (await createRes.json()) as { id: string };
+
+    const res = await adminFetch(`${BASE_URL}/api/admin/households/${household.id}`, { method: "DELETE" });
+    expect(res.status).toBe(204);
+
+    const listRes = await adminFetch(`${BASE_URL}/api/admin/households`);
+    const list = (await listRes.json()) as Array<{ id: string }>;
+    expect(list.map((h) => h.id)).not.toContain(household.id);
+  });
+
+  it("returns 404 for a non-existent household", async () => {
+    const res = await adminFetch(`${BASE_URL}/api/admin/households/missing`, { method: "DELETE" });
+    expect(res.status).toBe(404);
+  });
+
+  it("rejects requests from a non-admin email", async () => {
+    const createRes = await adminFetch(`${BASE_URL}/api/admin/households`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "実家" }),
+    });
+    const household = (await createRes.json()) as { id: string };
+
+    const res = await exports.default.fetch(`${BASE_URL}/api/admin/households/${household.id}`, {
+      method: "DELETE",
+      headers: { "cf-access-authenticated-user-email": "someone-else@example.com" },
+    });
+    expect(res.status).toBe(401);
+  });
+});
