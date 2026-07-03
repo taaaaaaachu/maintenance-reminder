@@ -99,10 +99,6 @@ export function getLineInviteUrl(): Promise<LineInviteUrl> {
   return request("/settings/line-invite");
 }
 
-export function updateLineInviteUrl(url: string): Promise<LineInviteUrl> {
-  return request("/settings/line-invite", { method: "PUT", body: JSON.stringify({ url }) });
-}
-
 export function listNotificationLog(limit = 50): Promise<NotificationLogEntry[]> {
   return request(`/notification-log?limit=${limit}`);
 }

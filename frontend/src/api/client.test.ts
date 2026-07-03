@@ -127,15 +127,4 @@ describe("api client", () => {
 
     expect(fetchMock).toHaveBeenCalledWith("/api/settings/line-invite", expect.any(Object));
   });
-
-  it("updateLineInviteUrl PUTs the url", async () => {
-    fetchMock.mockResolvedValue(new Response(JSON.stringify({ url: "https://line.me/R/ti/p/@x" }), { status: 200 }));
-
-    await api.updateLineInviteUrl("https://line.me/R/ti/p/@x");
-
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe("/api/settings/line-invite");
-    expect(init.method).toBe("PUT");
-    expect(JSON.parse(init.body as string)).toEqual({ url: "https://line.me/R/ti/p/@x" });
-  });
 });
