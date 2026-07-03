@@ -8,17 +8,17 @@ function generateToken(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export async function getOrCreateIcsFeedToken(db: D1Database): Promise<string> {
-  const existing = await getConfigValue(db, ICS_FEED_TOKEN_KEY);
+export async function getOrCreateIcsFeedToken(db: D1Database, householdId: string): Promise<string> {
+  const existing = await getConfigValue(db, householdId, ICS_FEED_TOKEN_KEY);
   if (existing) return existing;
 
   const token = generateToken();
-  await setConfigValue(db, ICS_FEED_TOKEN_KEY, token);
+  await setConfigValue(db, householdId, ICS_FEED_TOKEN_KEY, token);
   return token;
 }
 
-export async function regenerateIcsFeedToken(db: D1Database): Promise<string> {
+export async function regenerateIcsFeedToken(db: D1Database, householdId: string): Promise<string> {
   const token = generateToken();
-  await setConfigValue(db, ICS_FEED_TOKEN_KEY, token);
+  await setConfigValue(db, householdId, ICS_FEED_TOKEN_KEY, token);
   return token;
 }

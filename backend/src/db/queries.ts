@@ -43,25 +43,37 @@ const RECENT_SNOOZE_COUNT_SUBQUERY = `(
   WHERE h.item_id = i.id AND h.event_type = 'snooze' AND h.occurred_at >= ?
 ) as recent_snooze_count`;
 
-export async function listItems(db: D1Database, includeInactive: boolean): Promise<Item[]> {
+export async function listItems(db: D1Database, householdId: string, includeInactive: boolean): Promise<Item[]> {
   const sinceIso = daysAgoIso(RECENT_SNOOZE_WINDOW_DAYS);
   const query = includeInactive
-    ? `SELECT i.*, ${RECENT_SNOOZE_COUNT_SUBQUERY} FROM items i ORDER BY i.next_due_at ASC`
-    : `SELECT i.*, ${RECENT_SNOOZE_COUNT_SUBQUERY} FROM items i WHERE i.is_active = 1 ORDER BY i.next_due_at ASC`;
-  const { results } = await db.prepare(query).bind(sinceIso).all<ItemRow>();
+    ? `SELECT i.*, ${RECENT_SNOOZE_COUNT_SUBQUERY} FROM items i WHERE i.household_id = ? ORDER BY i.next_due_at ASC`
+    : `SELECT i.*, ${RECENT_SNOOZE_COUNT_SUBQUERY} FROM items i WHERE i.household_id = ? AND i.is_active = 1 ORDER BY i.next_due_at ASC`;
+  const { results } = await db.prepare(query).bind(sinceIso, householdId).all<ItemRow>();
   return results.map(rowToItem);
 }
 
-export async function getItem(db: D1Database, id: string): Promise<Item | null> {
+export async function getItem(db: D1Database, householdId: string, id: string): Promise<Item | null> {
   const sinceIso = daysAgoIso(RECENT_SNOOZE_WINDOW_DAYS);
   const row = await db
-    .prepare(`SELECT i.*, ${RECENT_SNOOZE_COUNT_SUBQUERY} FROM items i WHERE i.id = ?`)
-    .bind(sinceIso, id)
+    .prepare(`SELECT i.*, ${RECENT_SNOOZE_COUNT_SUBQUERY} FROM items i WHERE i.household_id = ? AND i.id = ?`)
+    .bind(sinceIso, householdId, id)
     .first<ItemRow>();
   return row ? rowToItem(row) : null;
 }
 
-export async function listDueItems(db: D1Database, today: string): Promise<Item[]> {
+export interface DueItem extends Item {
+  householdId: string;
+}
+
+interface DueItemRow extends ItemRow {
+  household_id: string;
+}
+
+function rowToDueItem(row: DueItemRow): DueItem {
+  return { ...rowToItem(row), householdId: row.household_id };
+}
+
+export async function listDueItemsAllHouseholds(db: D1Database, today: string): Promise<DueItem[]> {
   const sinceIso = daysAgoIso(RECENT_SNOOZE_WINDOW_DAYS);
   const { results } = await db
     .prepare(
@@ -70,12 +82,13 @@ export async function listDueItems(db: D1Database, today: string): Promise<Item[
        ORDER BY i.next_due_at ASC`,
     )
     .bind(sinceIso, today)
-    .all<ItemRow>();
-  return results.map(rowToItem);
+    .all<DueItemRow>();
+  return results.map(rowToDueItem);
 }
 
 export interface CreateItemParams {
   id: string;
+  householdId: string;
   name: string;
   category: string | null;
   intervalDays: number;
@@ -90,11 +103,12 @@ export async function createItem(db: D1Database, input: CreateItemParams): Promi
   const now = new Date().toISOString();
   await db
     .prepare(
-      `INSERT INTO items (id, name, category, interval_days, notify_days_before, notify_time, last_done_at, next_due_at, memo, is_active, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+      `INSERT INTO items (id, household_id, name, category, interval_days, notify_days_before, notify_time, last_done_at, next_due_at, memo, is_active, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
     )
     .bind(
       input.id,
+      input.householdId,
       input.name,
       input.category,
       input.intervalDays,
@@ -107,7 +121,7 @@ export async function createItem(db: D1Database, input: CreateItemParams): Promi
       now,
     )
     .run();
-  const created = await getItem(db, input.id);
+  const created = await getItem(db, input.householdId, input.id);
   if (!created) throw new Error("Failed to create item");
   return created;
 }
@@ -122,7 +136,12 @@ export interface UpdateItemParams {
   isActive?: boolean;
 }
 
-export async function updateItem(db: D1Database, id: string, input: UpdateItemParams): Promise<Item | null> {
+export async function updateItem(
+  db: D1Database,
+  householdId: string,
+  id: string,
+  input: UpdateItemParams,
+): Promise<Item | null> {
   const sets: string[] = [];
   const values: unknown[] = [];
 
@@ -155,55 +174,71 @@ export async function updateItem(db: D1Database, id: string, input: UpdateItemPa
     values.push(input.isActive ? 1 : 0);
   }
 
-  if (sets.length === 0) return getItem(db, id);
+  if (sets.length === 0) return getItem(db, householdId, id);
 
   sets.push("updated_at = ?");
   values.push(new Date().toISOString());
-  values.push(id);
+  values.push(householdId, id);
 
   await db
-    .prepare(`UPDATE items SET ${sets.join(", ")} WHERE id = ?`)
+    .prepare(`UPDATE items SET ${sets.join(", ")} WHERE household_id = ? AND id = ?`)
     .bind(...values)
     .run();
-  return getItem(db, id);
+  return getItem(db, householdId, id);
 }
 
-export async function deleteItem(db: D1Database, id: string): Promise<void> {
-  await db.prepare("DELETE FROM items WHERE id = ?").bind(id).run();
+export async function deleteItem(db: D1Database, householdId: string, id: string): Promise<void> {
+  await db.prepare("DELETE FROM items WHERE household_id = ? AND id = ?").bind(householdId, id).run();
 }
 
-export async function completeItem(db: D1Database, id: string, today: string): Promise<Item | null> {
-  const item = await getItem(db, id);
+export async function completeItem(
+  db: D1Database,
+  householdId: string,
+  id: string,
+  today: string,
+  actorEmail: string,
+): Promise<Item | null> {
+  const item = await getItem(db, householdId, id);
   if (!item) return null;
   const nextDueAt = addDaysToDateString(today, item.intervalDays);
   await db
-    .prepare("UPDATE items SET last_done_at = ?, next_due_at = ?, updated_at = ? WHERE id = ?")
-    .bind(today, nextDueAt, new Date().toISOString(), id)
+    .prepare("UPDATE items SET last_done_at = ?, next_due_at = ?, updated_at = ? WHERE household_id = ? AND id = ?")
+    .bind(today, nextDueAt, new Date().toISOString(), householdId, id)
     .run();
   await historyDb.recordCompletion(db, {
+    householdId,
     itemId: id,
     completedDate: today,
     intervalDays: item.intervalDays,
     nextDueAtBefore: item.nextDueAt,
     nextDueAtAfter: nextDueAt,
+    actorEmail,
   });
-  return getItem(db, id);
+  return getItem(db, householdId, id);
 }
 
-export async function snoozeItem(db: D1Database, id: string, days: number): Promise<Item | null> {
-  const item = await getItem(db, id);
+export async function snoozeItem(
+  db: D1Database,
+  householdId: string,
+  id: string,
+  days: number,
+  actorEmail: string,
+): Promise<Item | null> {
+  const item = await getItem(db, householdId, id);
   if (!item) return null;
   const nextDueAt = addDaysToDateString(item.nextDueAt, days);
   await db
-    .prepare("UPDATE items SET next_due_at = ?, updated_at = ? WHERE id = ?")
-    .bind(nextDueAt, new Date().toISOString(), id)
+    .prepare("UPDATE items SET next_due_at = ?, updated_at = ? WHERE household_id = ? AND id = ?")
+    .bind(nextDueAt, new Date().toISOString(), householdId, id)
     .run();
   await historyDb.recordSnooze(db, {
+    householdId,
     itemId: id,
     snoozeDays: days,
     intervalDays: item.intervalDays,
     nextDueAtBefore: item.nextDueAt,
     nextDueAtAfter: nextDueAt,
+    actorEmail,
   });
-  return getItem(db, id);
+  return getItem(db, householdId, id);
 }
