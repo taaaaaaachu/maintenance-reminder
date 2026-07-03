@@ -29,9 +29,14 @@ function computeStats(history: ItemHistoryEntry[]) {
   return { avgInterval: average(intervals), avgDelay: average(delays) };
 }
 
+function actorSuffix(entry: ItemHistoryEntry): string {
+  const actor = entry.actorDisplayName ?? entry.actorEmail;
+  return actor ? `(${actor})` : "";
+}
+
 function eventLabel(entry: ItemHistoryEntry): string {
-  if (entry.eventType === "complete") return `${entry.completedDate} お手入れ完了`;
-  return `${entry.occurredAt.slice(0, 10)} ${entry.snoozeDays}日スヌーズ`;
+  if (entry.eventType === "complete") return `${entry.completedDate} お手入れ完了${actorSuffix(entry)}`;
+  return `${entry.occurredAt.slice(0, 10)} ${entry.snoozeDays}日スヌーズ${actorSuffix(entry)}`;
 }
 
 interface ItemHistorySectionProps {
