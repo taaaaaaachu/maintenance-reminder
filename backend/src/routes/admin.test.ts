@@ -1,5 +1,9 @@
+import { Hono } from "hono";
 import { env, exports } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
+import { adminRouter } from "./admin.js";
+import { HttpError } from "../lib/errors.js";
+import type { HonoEnv } from "../types.js";
 
 const BASE_URL = "https://example.com";
 
@@ -31,6 +35,29 @@ describe("admin API authorization", () => {
       headers: { "cf-access-authenticated-user-email": "someone-else@example.com" },
     });
     expect(res.status).toBe(401);
+  });
+
+  it("falls back to DEV_HOUSEHOLD_EMAIL when no Access header is present (local dev only)", async () => {
+    const app = new Hono<HonoEnv>();
+    app.route("/api/admin", adminRouter);
+    app.onError((err, c) => {
+      if (err instanceof HttpError) return c.json({ error: { message: err.message, code: err.code } }, err.status as 401);
+      throw err;
+    });
+
+    const allowed = await app.request(
+      "/api/admin/households",
+      undefined,
+      { ...env, DEV_HOUSEHOLD_EMAIL: env.ADMIN_EMAIL },
+    );
+    expect(allowed.status).toBe(200);
+
+    const rejected = await app.request(
+      "/api/admin/households",
+      undefined,
+      { ...env, DEV_HOUSEHOLD_EMAIL: "someone-else@example.com" },
+    );
+    expect(rejected.status).toBe(401);
   });
 });
 

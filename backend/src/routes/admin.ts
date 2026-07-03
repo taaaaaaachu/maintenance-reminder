@@ -20,7 +20,9 @@ const addMemberSchema = z.object({
 export const adminRouter = new Hono<HonoEnv>();
 
 adminRouter.use("*", async (c, next) => {
-  const email = c.req.header("cf-access-authenticated-user-email")?.trim().toLowerCase();
+  const email = (c.req.header("cf-access-authenticated-user-email") ?? c.env.DEV_HOUSEHOLD_EMAIL)
+    ?.trim()
+    .toLowerCase();
   if (!email || email !== c.env.ADMIN_EMAIL.trim().toLowerCase()) {
     throw unauthorized("管理者のみアクセスできます");
   }
