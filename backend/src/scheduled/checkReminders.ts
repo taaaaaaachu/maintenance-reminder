@@ -1,49 +1,20 @@
-import type { Item, NotificationChannel } from "@maintenance-reminder/shared";
+import type { NotificationChannel } from "@maintenance-reminder/shared";
 import * as itemsDb from "../db/queries.js";
+import type { DueItem } from "../db/queries.js";
 import * as notificationsDb from "../db/notifications.js";
 import { sendToRecipient } from "../notifications/dispatcher.js";
 import { buildReminderMessage } from "../notifications/templates.js";
 import { currentJstTimeString, jstDateStringToUtcStartIso, todayJstDateString } from "../lib/date.js";
 import type { AppBindings } from "../types.js";
 
-async function collectPendingItems(
-  env: AppBindings,
-  dueItems: Item[],
-  channel: NotificationChannel,
-  recipientIdentifier: string,
-  sinceIso: string,
-): Promise<Item[]> {
-  const pending: Item[] = [];
-  for (const item of dueItems) {
-    const alreadySent = await notificationsDb.hasSuccessfulNotificationSince(
-      env.DB,
-      item.id,
-      channel,
-      recipientIdentifier,
-      sinceIso,
-    );
-    if (!alreadySent) pending.push(item);
-  }
-  return pending;
-}
-
-async function recordLogForItems(
-  env: AppBindings,
-  items: Item[],
-  channel: NotificationChannel,
-  recipientIdentifier: string,
-  status: "success" | "failed",
-  errorMessage?: string,
-): Promise<void> {
+function groupByHousehold(items: DueItem[]): Map<string, DueItem[]> {
+  const map = new Map<string, DueItem[]>();
   for (const item of items) {
-    await notificationsDb.recordNotificationLog(env.DB, {
-      itemId: item.id,
-      channel,
-      recipientIdentifier,
-      status,
-      errorMessage,
-    });
+    const list = map.get(item.householdId) ?? [];
+    list.push(item);
+    map.set(item.householdId, list);
   }
+  return map;
 }
 
 export async function checkReminders(env: AppBindings): Promise<void> {
@@ -51,31 +22,59 @@ export async function checkReminders(env: AppBindings): Promise<void> {
   const currentTime = currentJstTimeString();
   const sinceIso = jstDateStringToUtcStartIso(today);
 
-  const dueItems = (await itemsDb.listDueItems(env.DB, today)).filter((item) => item.notifyTime === currentTime);
-  const enabledChannels = (await notificationsDb.listNotificationSettings(env.DB))
-    .filter((s) => s.isEnabled)
-    .map((s) => s.channel);
+  const dueItemsByHousehold = groupByHousehold(
+    (await itemsDb.listDueItemsAllHouseholds(env.DB, today)).filter((item) => item.notifyTime === currentTime),
+  );
+  const enabledChannelsByHousehold = await notificationsDb.listAllEnabledChannelsByHousehold(env.DB);
+  const recipientsByHouseholdChannel = await notificationsDb.listAllRecipients(env.DB);
 
   const tasks: Promise<void>[] = [];
 
-  for (const channel of enabledChannels) {
-    const recipients = await notificationsDb.listRecipients(env.DB, channel);
-    for (const recipient of recipients) {
-      tasks.push(
-        (async () => {
-          const pendingItems = await collectPendingItems(env, dueItems, channel, recipient.identifier, sinceIso);
-          if (pendingItems.length === 0) return;
+  for (const [householdId, dueItems] of dueItemsByHousehold) {
+    const channels: NotificationChannel[] = enabledChannelsByHousehold.get(householdId) ?? [];
+    for (const channel of channels) {
+      const recipients = recipientsByHouseholdChannel.get(`${householdId}:${channel}`) ?? [];
+      for (const recipient of recipients) {
+        tasks.push(
+          (async () => {
+            const notifiedItemIds = await notificationsDb.listNotifiedItemIds(
+              env.DB,
+              householdId,
+              dueItems.map((item) => item.id),
+              channel,
+              recipient.identifier,
+              sinceIso,
+            );
+            const pendingItems = dueItems.filter((item) => !notifiedItemIds.has(item.id));
+            if (pendingItems.length === 0) return;
 
-          const message = buildReminderMessage(pendingItems, today, env.APP_BASE_URL);
-          try {
-            await sendToRecipient(env, channel, recipient.identifier, message);
-            await recordLogForItems(env, pendingItems, channel, recipient.identifier, "success");
-          } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            await recordLogForItems(env, pendingItems, channel, recipient.identifier, "failed", errorMessage);
-          }
-        })(),
-      );
+            const message = buildReminderMessage(pendingItems, today, env.APP_BASE_URL);
+            const pendingItemIds = pendingItems.map((item) => item.id);
+            try {
+              await sendToRecipient(env, channel, recipient.identifier, message);
+              await notificationsDb.recordNotificationLogBatch(
+                env.DB,
+                householdId,
+                pendingItemIds,
+                channel,
+                recipient.identifier,
+                "success",
+              );
+            } catch (error) {
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              await notificationsDb.recordNotificationLogBatch(
+                env.DB,
+                householdId,
+                pendingItemIds,
+                channel,
+                recipient.identifier,
+                "failed",
+                errorMessage,
+              );
+            }
+          })(),
+        );
+      }
     }
   }
 
