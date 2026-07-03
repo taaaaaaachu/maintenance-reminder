@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import * as queries from "./queries.js";
 
 async function clearItems() {
+  await env.DB.prepare("DELETE FROM item_history").run();
   await env.DB.prepare("DELETE FROM items").run();
 }
 
@@ -154,6 +155,31 @@ describe("completeItem", () => {
   it("returns null for a non-existent item", async () => {
     expect(await queries.completeItem(env.DB, "missing", "2026-07-02")).toBeNull();
   });
+
+  it("records a complete event in item_history", async () => {
+    const created = await queries.createItem(
+      env.DB,
+      makeCreateParams({ intervalDays: 10, lastDoneAt: "2026-06-01", nextDueAt: "2026-06-11" }),
+    );
+
+    await queries.completeItem(env.DB, created.id, "2026-07-02");
+
+    const { results } = await env.DB.prepare("SELECT * FROM item_history WHERE item_id = ?").bind(created.id).all<{
+      event_type: string;
+      completed_date: string;
+      interval_days: number;
+      next_due_at_before: string;
+      next_due_at_after: string;
+    }>();
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      event_type: "complete",
+      completed_date: "2026-07-02",
+      interval_days: 10,
+      next_due_at_before: "2026-06-11",
+      next_due_at_after: "2026-07-12",
+    });
+  });
 });
 
 describe("snoozeItem", () => {
@@ -170,5 +196,55 @@ describe("snoozeItem", () => {
 
   it("returns null for a non-existent item", async () => {
     expect(await queries.snoozeItem(env.DB, "missing", 3)).toBeNull();
+  });
+
+  it("records a snooze event in item_history", async () => {
+    const created = await queries.createItem(
+      env.DB,
+      makeCreateParams({ lastDoneAt: "2026-06-25", nextDueAt: "2026-07-02" }),
+    );
+
+    await queries.snoozeItem(env.DB, created.id, 3);
+
+    const { results } = await env.DB.prepare("SELECT * FROM item_history WHERE item_id = ?").bind(created.id).all<{
+      event_type: string;
+      snooze_days: number;
+      next_due_at_before: string;
+      next_due_at_after: string;
+    }>();
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      event_type: "snooze",
+      snooze_days: 3,
+      next_due_at_before: "2026-07-02",
+      next_due_at_after: "2026-07-05",
+    });
+  });
+});
+
+describe("recentSnoozeCount", () => {
+  it("counts snoozes within the last 30 days and reflects it in listItems/getItem", async () => {
+    const created = await queries.createItem(env.DB, makeCreateParams({ id: "snoozy" }));
+    await queries.snoozeItem(env.DB, created.id, 3);
+    await queries.snoozeItem(env.DB, created.id, 3);
+
+    const fetched = await queries.getItem(env.DB, created.id);
+    expect(fetched?.recentSnoozeCount).toBe(2);
+
+    const listedItems = await queries.listItems(env.DB, false);
+    expect(listedItems[0]?.recentSnoozeCount).toBe(2);
+  });
+
+  it("does not count snoozes older than 30 days", async () => {
+    const created = await queries.createItem(env.DB, makeCreateParams({ id: "old-snooze" }));
+    await env.DB.prepare(
+      `INSERT INTO item_history (id, item_id, event_type, occurred_at, snooze_days, interval_days, next_due_at_before, next_due_at_after)
+       VALUES (?, ?, 'snooze', ?, 3, 7, '2026-01-01', '2026-01-04')`,
+    )
+      .bind(crypto.randomUUID(), created.id, "2020-01-01T00:00:00.000Z")
+      .run();
+
+    const fetched = await queries.getItem(env.DB, created.id);
+    expect(fetched?.recentSnoozeCount).toBe(0);
   });
 });

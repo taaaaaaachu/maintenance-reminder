@@ -1,5 +1,8 @@
 import type { Item } from "@maintenance-reminder/shared";
-import { addDaysToDateString } from "../lib/date.js";
+import { addDaysToDateString, daysAgoIso } from "../lib/date.js";
+import * as historyDb from "./history.js";
+
+const RECENT_SNOOZE_WINDOW_DAYS = 30;
 
 interface ItemRow {
   id: string;
@@ -14,6 +17,7 @@ interface ItemRow {
   is_active: number;
   created_at: string;
   updated_at: string;
+  recent_snooze_count: number;
 }
 
 function rowToItem(row: ItemRow): Item {
@@ -30,30 +34,42 @@ function rowToItem(row: ItemRow): Item {
     isActive: row.is_active === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    recentSnoozeCount: row.recent_snooze_count,
   };
 }
 
+const RECENT_SNOOZE_COUNT_SUBQUERY = `(
+  SELECT COUNT(*) FROM item_history h
+  WHERE h.item_id = i.id AND h.event_type = 'snooze' AND h.occurred_at >= ?
+) as recent_snooze_count`;
+
 export async function listItems(db: D1Database, includeInactive: boolean): Promise<Item[]> {
+  const sinceIso = daysAgoIso(RECENT_SNOOZE_WINDOW_DAYS);
   const query = includeInactive
-    ? "SELECT * FROM items ORDER BY next_due_at ASC"
-    : "SELECT * FROM items WHERE is_active = 1 ORDER BY next_due_at ASC";
-  const { results } = await db.prepare(query).all<ItemRow>();
+    ? `SELECT i.*, ${RECENT_SNOOZE_COUNT_SUBQUERY} FROM items i ORDER BY i.next_due_at ASC`
+    : `SELECT i.*, ${RECENT_SNOOZE_COUNT_SUBQUERY} FROM items i WHERE i.is_active = 1 ORDER BY i.next_due_at ASC`;
+  const { results } = await db.prepare(query).bind(sinceIso).all<ItemRow>();
   return results.map(rowToItem);
 }
 
 export async function getItem(db: D1Database, id: string): Promise<Item | null> {
-  const row = await db.prepare("SELECT * FROM items WHERE id = ?").bind(id).first<ItemRow>();
+  const sinceIso = daysAgoIso(RECENT_SNOOZE_WINDOW_DAYS);
+  const row = await db
+    .prepare(`SELECT i.*, ${RECENT_SNOOZE_COUNT_SUBQUERY} FROM items i WHERE i.id = ?`)
+    .bind(sinceIso, id)
+    .first<ItemRow>();
   return row ? rowToItem(row) : null;
 }
 
 export async function listDueItems(db: D1Database, today: string): Promise<Item[]> {
+  const sinceIso = daysAgoIso(RECENT_SNOOZE_WINDOW_DAYS);
   const { results } = await db
     .prepare(
-      `SELECT * FROM items
-       WHERE is_active = 1 AND date(next_due_at, '-' || notify_days_before || ' days') <= ?
-       ORDER BY next_due_at ASC`,
+      `SELECT i.*, ${RECENT_SNOOZE_COUNT_SUBQUERY} FROM items i
+       WHERE i.is_active = 1 AND date(i.next_due_at, '-' || i.notify_days_before || ' days') <= ?
+       ORDER BY i.next_due_at ASC`,
     )
-    .bind(today)
+    .bind(sinceIso, today)
     .all<ItemRow>();
   return results.map(rowToItem);
 }
@@ -164,6 +180,13 @@ export async function completeItem(db: D1Database, id: string, today: string): P
     .prepare("UPDATE items SET last_done_at = ?, next_due_at = ?, updated_at = ? WHERE id = ?")
     .bind(today, nextDueAt, new Date().toISOString(), id)
     .run();
+  await historyDb.recordCompletion(db, {
+    itemId: id,
+    completedDate: today,
+    intervalDays: item.intervalDays,
+    nextDueAtBefore: item.nextDueAt,
+    nextDueAtAfter: nextDueAt,
+  });
   return getItem(db, id);
 }
 
@@ -175,5 +198,12 @@ export async function snoozeItem(db: D1Database, id: string, days: number): Prom
     .prepare("UPDATE items SET next_due_at = ?, updated_at = ? WHERE id = ?")
     .bind(nextDueAt, new Date().toISOString(), id)
     .run();
+  await historyDb.recordSnooze(db, {
+    itemId: id,
+    snoozeDays: days,
+    intervalDays: item.intervalDays,
+    nextDueAtBefore: item.nextDueAt,
+    nextDueAtAfter: nextDueAt,
+  });
   return getItem(db, id);
 }

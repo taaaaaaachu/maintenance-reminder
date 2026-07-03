@@ -36,6 +36,8 @@ npm workspaces モノレポ
 - **D1の外部キーはON DELETE CASCADEが実際に効く**(notification_logはitem削除で連動削除される)。「削除後もログは残る」という前提でコードやテストを書かない。
 - **通知メッセージ内のアプリURLは`env.APP_BASE_URL`(`wrangler.toml`の`[vars]`)から組み立てる**。Cronの`scheduled`ハンドラーにはHTTPリクエストが存在しないため、実行時にドメインを動的検出する手段がない。`backend/src/notifications/templates.ts`の`buildReminderMessage`が`{APP_BASE_URL}/?items={id1},{id2},...`形式でリンクを生成し、LINE/メール本文には地の文として、Pushoverは`url`/`url_title`パラメータ(開くボタン)として渡している。フロント側は`App.tsx`が`?items=`(カンマ区切り、旧`?item=`単数も後方互換で読める)クエリを読み取ってアイテム一覧タブを開き、該当する全カードをスクロール&ハイライトする(React Router等のルーティングは導入していないため)。
 - **通知は同一チャネル・宛先ごとに1通へまとめる**。`checkReminders.ts`は`item×channel×recipient`ではなく`channel×recipient`単位でループし、その回の該当アイテムをすべて`buildReminderMessage`に配列で渡して1通に集約する(1件なら従来通りの詳細文面、複数件なら箇条書き)。通知履歴(`notification_log`)への記録と冪等性チェック(`hasSuccessfulNotificationSince`)はアイテム単位のまま維持している。
+- **完了/スヌーズは`item_history`テーブルに全件記録する**(`backend/src/db/history.ts`)。`completeItem`/`snoozeItem`(`backend/src/db/queries.ts`)内でitems更新と同じ関数呼び出しの中でINSERTしており、履歴記録漏れを防ぐために呼び出し側(ルートハンドラー)に記録処理を分散させない。`items.recentSnoozeCount`(直近30日のスヌーズ回数)は`listItems`/`getItem`のSQLにサブクエリを埋め込んで一括計算しており、N+1を避けている。
+- **月次サマリー通知は`app_config`の`last_monthly_summary_month`キーで冪等性を担保する**(`backend/src/scheduled/sendMonthlySummary.ts`)。Cronは30分おきに走るため、「JST月初かつ07:00固定」の条件だけでは同一実行タイミングでの重複送信リスクがあり、送信済み月をD1に記録して二重送信を防いでいる。通知履歴(`notification_log`)には記録しない(月次サマリーは特定のitemに紐づかないため)。
 
 ## ハマりどころ
 

@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { DEFAULT_SNOOZE_DAYS } from "@maintenance-reminder/shared";
 import * as itemsDb from "../db/queries.js";
+import * as historyDb from "../db/history.js";
 import { getConfigValue } from "../db/appConfig.js";
 import { addDaysToDateString, todayJstDateString } from "../lib/date.js";
 import { badRequest, notFound } from "../lib/errors.js";
@@ -100,4 +101,11 @@ itemsRouter.post("/:id/snooze", async (c) => {
   const item = await itemsDb.snoozeItem(c.env.DB, c.req.param("id"), days);
   if (!item) throw notFound("Item not found");
   return c.json(item);
+});
+
+itemsRouter.get("/:id/history", async (c) => {
+  const item = await itemsDb.getItem(c.env.DB, c.req.param("id"));
+  if (!item) throw notFound("Item not found");
+  const history = await historyDb.listHistory(c.env.DB, c.req.param("id"));
+  return c.json(history);
 });

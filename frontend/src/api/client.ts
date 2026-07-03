@@ -5,6 +5,7 @@ import type {
   DefaultNotifyTime,
   IcsFeedToken,
   Item,
+  ItemHistoryEntry,
   LineInviteUrl,
   NotificationChannel,
   NotificationLogEntry,
@@ -50,6 +51,10 @@ export function completeItem(id: string): Promise<Item> {
 
 export function snoozeItem(id: string, input: SnoozeItemInput = {}): Promise<Item> {
   return request(`/items/${id}/snooze`, { method: "POST", body: JSON.stringify(input) });
+}
+
+export function getItemHistory(id: string): Promise<ItemHistoryEntry[]> {
+  return request(`/items/${id}/history`);
 }
 
 export function listNotificationSettings(): Promise<NotificationSetting[]> {

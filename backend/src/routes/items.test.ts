@@ -5,6 +5,7 @@ import { todayJstDateString } from "../lib/date.js";
 const BASE_URL = "https://example.com";
 
 async function clearItems() {
+  await env.DB.prepare("DELETE FROM item_history").run();
   await env.DB.prepare("DELETE FROM items").run();
   await env.DB.prepare("DELETE FROM app_config").run();
 }
@@ -237,5 +238,29 @@ describe("POST /api/items/:id/snooze", () => {
   it("returns 404 for a non-existent item", async () => {
     const res = await exports.default.fetch(`${BASE_URL}/api/items/missing/snooze`, { method: "POST" });
     expect(res.status).toBe(404);
+  });
+});
+
+describe("GET /api/items/:id/history", () => {
+  it("returns 404 for a non-existent item", async () => {
+    const res = await exports.default.fetch(`${BASE_URL}/api/items/missing/history`);
+    expect(res.status).toBe(404);
+  });
+
+  it("returns complete and snooze events for the item, most recent first", async () => {
+    const { json: created } = await createItem({ name: "item", intervalDays: 7, lastDoneAt: "2026-06-01" });
+
+    await exports.default.fetch(`${BASE_URL}/api/items/${created.id}/snooze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ days: 3 }),
+    });
+    await exports.default.fetch(`${BASE_URL}/api/items/${created.id}/complete`, { method: "POST" });
+
+    const res = await exports.default.fetch(`${BASE_URL}/api/items/${created.id}/history`);
+    const history = (await res.json()) as Array<{ eventType: string }>;
+
+    expect(res.status).toBe(200);
+    expect(history.map((h) => h.eventType)).toEqual(["complete", "snooze"]);
   });
 });

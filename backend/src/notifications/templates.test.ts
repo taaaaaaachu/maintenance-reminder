@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Item } from "@maintenance-reminder/shared";
-import { buildReminderMessage } from "./templates.js";
+import { buildMonthlySummaryMessage, buildReminderMessage } from "./templates.js";
 
 function makeItem(overrides: Partial<Item> = {}): Item {
   return {
@@ -16,6 +16,7 @@ function makeItem(overrides: Partial<Item> = {}): Item {
     isActive: true,
     createdAt: "2026-06-25T00:00:00.000Z",
     updatedAt: "2026-06-25T00:00:00.000Z",
+    recentSnoozeCount: 0,
     ...overrides,
   };
 }
@@ -101,5 +102,32 @@ describe("buildReminderMessage with multiple items", () => {
     const message = buildReminderMessage(items, "2026-07-02", "https://reminder.example.com");
 
     expect(message.url).toBe("https://reminder.example.com/?items=a,b,c");
+  });
+});
+
+describe("buildMonthlySummaryMessage", () => {
+  it("lists completions with their dates and shows the completion/snooze counts", () => {
+    const message = buildMonthlySummaryMessage(
+      [
+        { itemName: "アイテムA", completedDate: "2026-07-05" },
+        { itemName: "アイテムB", completedDate: "2026-07-20" },
+      ],
+      3,
+      "2026年7月",
+      "https://reminder.example.com",
+    );
+
+    expect(message.title).toContain("2026年7月");
+    expect(message.body).toContain("完了件数: 2件");
+    expect(message.body).toContain("スヌーズ回数: 3回");
+    expect(message.body).toContain("・2026-07-05 アイテムA");
+    expect(message.body).toContain("・2026-07-20 アイテムB");
+    expect(message.url).toBe("https://reminder.example.com/");
+  });
+
+  it("shows a fallback message when there were no completions", () => {
+    const message = buildMonthlySummaryMessage([], 0, "2026年7月", "https://reminder.example.com");
+
+    expect(message.body).toContain("完了したお手入れはありませんでした。");
   });
 });

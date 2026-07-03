@@ -45,6 +45,7 @@ describe("ItemFormPage", () => {
       isActive: true,
       createdAt: "2026-06-25T00:00:00.000Z",
       updatedAt: "2026-06-25T00:00:00.000Z",
+      recentSnoozeCount: 0,
     };
     render(
       <ItemFormPage initialItem={initialItem} defaultNotifyTime="20:30" onSubmit={vi.fn()} onCancel={vi.fn()} />,
@@ -82,6 +83,7 @@ describe("ItemFormPage", () => {
       isActive: true,
       createdAt: "2026-06-25T00:00:00.000Z",
       updatedAt: "2026-06-25T00:00:00.000Z",
+      recentSnoozeCount: 0,
     };
     render(<ItemFormPage initialItem={initialItem} onSubmit={onSubmit} onCancel={vi.fn()} />);
 

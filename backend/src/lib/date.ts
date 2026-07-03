@@ -26,3 +26,34 @@ export function currentJstTimeString(): string {
   const mm = String(jst.getUTCMinutes()).padStart(2, "0");
   return `${hh}:${mm}`;
 }
+
+export function daysAgoIso(days: number): string {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+}
+
+export function isFirstDayOfJstMonth(): boolean {
+  return todayJstDateString().endsWith("-01");
+}
+
+export interface JstMonthRange {
+  start: string;
+  end: string;
+  label: string;
+}
+
+export function previousJstMonthRange(): JstMonthRange {
+  const [yearStr, monthStr] = todayJstDateString().split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const prevMonthDate = new Date(Date.UTC(year, month - 2, 1));
+  const prevYear = prevMonthDate.getUTCFullYear();
+  const prevMonth = prevMonthDate.getUTCMonth() + 1;
+  const lastDay = new Date(Date.UTC(prevYear, prevMonth, 0)).getUTCDate();
+  const monthPart = String(prevMonth).padStart(2, "0");
+
+  return {
+    start: `${prevYear}-${monthPart}-01`,
+    end: `${prevYear}-${monthPart}-${String(lastDay).padStart(2, "0")}`,
+    label: `${prevYear}年${prevMonth}月`,
+  };
+}

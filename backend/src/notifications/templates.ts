@@ -1,4 +1,5 @@
 import type { Item } from "@maintenance-reminder/shared";
+import type { MonthlyCompletion } from "../db/history.js";
 import { daysBetweenDateStrings } from "../lib/date.js";
 
 export interface NotificationMessage {
@@ -54,5 +55,32 @@ export function buildReminderMessage(items: Item[], today: string, baseUrl: stri
     title: `🔔【${items.length}件】お手入れリマインダー`,
     body: `以下のお手入れが必要です。\n\n${lines.join("\n")}`,
     url: buildItemsUrl(baseUrl, items),
+  };
+}
+
+export function buildMonthlySummaryMessage(
+  completions: MonthlyCompletion[],
+  snoozeCount: number,
+  monthLabel: string,
+  baseUrl: string,
+): NotificationMessage {
+  const lines =
+    completions.length > 0
+      ? completions.map((c) => `・${c.completedDate} ${c.itemName}`)
+      : ["完了したお手入れはありませんでした。"];
+
+  const body = [
+    `${monthLabel}のお手入れ実績です。`,
+    "",
+    `完了件数: ${completions.length}件`,
+    `スヌーズ回数: ${snoozeCount}回`,
+    "",
+    ...lines,
+  ].join("\n");
+
+  return {
+    title: `📊【${monthLabel}】お手入れ実績サマリー`,
+    body,
+    url: `${baseUrl}/`,
   };
 }

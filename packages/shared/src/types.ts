@@ -13,6 +13,7 @@ export interface Item {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  recentSnoozeCount: number;
 }
 
 export interface CreateItemInput {
@@ -80,6 +81,20 @@ export interface LineInviteUrl {
 
 export interface DefaultNotifyTime {
   time: string;
+}
+
+export type HistoryEventType = "complete" | "snooze";
+
+export interface ItemHistoryEntry {
+  id: string;
+  itemId: string;
+  eventType: HistoryEventType;
+  occurredAt: string;
+  completedDate: string | null;
+  snoozeDays: number | null;
+  intervalDays: number;
+  nextDueAtBefore: string;
+  nextDueAtAfter: string;
 }
 
 export type NotificationStatus = "success" | "failed";

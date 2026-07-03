@@ -2,8 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import {
   addDaysToDateString,
   currentJstTimeString,
+  daysAgoIso,
   daysBetweenDateStrings,
+  isFirstDayOfJstMonth,
   jstDateStringToUtcStartIso,
+  previousJstMonthRange,
   todayJstDateString,
 } from "./date.js";
 
@@ -77,6 +80,53 @@ describe("currentJstTimeString", () => {
     // 2026-07-01T20:05:00Z is 2026-07-02 05:05 in JST
     vi.setSystemTime(new Date("2026-07-01T20:05:00Z"));
     expect(currentJstTimeString()).toBe("05:05");
+    vi.useRealTimers();
+  });
+});
+
+describe("daysAgoIso", () => {
+  it("returns an ISO string N days before now", () => {
+    vi.setSystemTime(new Date("2026-07-10T00:00:00Z"));
+    expect(daysAgoIso(30)).toBe("2026-06-10T00:00:00.000Z");
+    vi.useRealTimers();
+  });
+});
+
+describe("isFirstDayOfJstMonth", () => {
+  it("returns true when today's JST date is the 1st", () => {
+    // 2026-07-31T15:00:00Z is 2026-08-01 00:00 in JST
+    vi.setSystemTime(new Date("2026-07-31T15:00:00Z"));
+    expect(isFirstDayOfJstMonth()).toBe(true);
+    vi.useRealTimers();
+  });
+
+  it("returns false on other days", () => {
+    vi.setSystemTime(new Date("2026-07-02T03:00:00Z"));
+    expect(isFirstDayOfJstMonth()).toBe(false);
+    vi.useRealTimers();
+  });
+});
+
+describe("previousJstMonthRange", () => {
+  it("returns the previous month's date range and a Japanese label", () => {
+    // 2026-07-31T15:00:00Z is 2026-08-01 00:00 in JST
+    vi.setSystemTime(new Date("2026-07-31T15:00:00Z"));
+    expect(previousJstMonthRange()).toEqual({
+      start: "2026-07-01",
+      end: "2026-07-31",
+      label: "2026年7月",
+    });
+    vi.useRealTimers();
+  });
+
+  it("rolls over the year when the previous month is December", () => {
+    // 2027-01-01T00:00:00+09:00 is 2026-12-31T15:00:00Z
+    vi.setSystemTime(new Date("2026-12-31T15:00:00Z"));
+    expect(previousJstMonthRange()).toEqual({
+      start: "2026-12-01",
+      end: "2026-12-31",
+      label: "2026年12月",
+    });
     vi.useRealTimers();
   });
 });

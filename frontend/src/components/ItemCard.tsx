@@ -2,6 +2,9 @@ import type { Item } from "@maintenance-reminder/shared";
 import { CompleteButton } from "./CompleteButton.js";
 import { SnoozeButton } from "./SnoozeButton.js";
 import { daysUntil, dueBadgeClass, dueLabel } from "./dueStatus.js";
+import { ItemHistorySection } from "./ItemHistorySection.js";
+
+const FREQUENT_SNOOZE_THRESHOLD = 2;
 
 interface ItemCardProps {
   item: Item;
@@ -26,6 +29,11 @@ export function ItemCard({ item, onComplete, onSnooze, onEdit, onDelete, isMutat
         <div>
           <h3 className="text-base font-semibold text-slate-900">{item.name}</h3>
           {item.category && <p className="text-sm text-slate-500">{item.category}</p>}
+          {item.recentSnoozeCount >= FREQUENT_SNOOZE_THRESHOLD && (
+            <span className="mt-1 inline-block rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
+              ⏰ 先延ばし中(直近30日で{item.recentSnoozeCount}回スヌーズ)
+            </span>
+          )}
         </div>
         <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${dueBadgeClass(days)}`}>
           {dueLabel(days)}({item.nextDueAt})
@@ -57,6 +65,8 @@ export function ItemCard({ item, onComplete, onSnooze, onEdit, onDelete, isMutat
           削除
         </button>
       </div>
+
+      <ItemHistorySection itemId={item.id} />
     </div>
   );
 }

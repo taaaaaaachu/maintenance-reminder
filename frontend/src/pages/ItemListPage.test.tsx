@@ -19,6 +19,7 @@ function makeItem(overrides: Partial<Item> = {}): Item {
     isActive: true,
     createdAt: "2026-06-25T00:00:00.000Z",
     updatedAt: "2026-06-25T00:00:00.000Z",
+    recentSnoozeCount: 0,
     ...overrides,
   };
 }
