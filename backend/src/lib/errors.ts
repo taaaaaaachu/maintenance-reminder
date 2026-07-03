@@ -15,3 +15,7 @@ export function notFound(message = "Not Found"): HttpError {
 export function badRequest(message: string): HttpError {
   return new HttpError(400, "BAD_REQUEST", message);
 }
+
+export function unauthorized(message = "Unauthorized"): HttpError {
+  return new HttpError(401, "UNAUTHORIZED", message);
+}

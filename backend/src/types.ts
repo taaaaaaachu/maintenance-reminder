@@ -6,6 +6,14 @@ export interface AppBindings {
   RESEND_FROM_ADDRESS: string;
   PUSHOVER_API_TOKEN: string;
   APP_BASE_URL: string;
+  ADMIN_EMAIL: string;
+  LINE_INVITE_URL: string;
+  DEV_HOUSEHOLD_EMAIL?: string;
 }
 
-export type HonoEnv = { Bindings: AppBindings };
+export interface AppVariables {
+  householdId: string;
+  actorEmail: string;
+}
+
+export type HonoEnv = { Bindings: AppBindings; Variables: AppVariables };

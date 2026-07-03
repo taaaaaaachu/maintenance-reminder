@@ -31,6 +31,10 @@ export function daysAgoIso(days: number): string {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 }
 
+export function daysFromNowIso(days: number): string {
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+}
+
 export function isFirstDayOfJstMonth(): boolean {
   return todayJstDateString().endsWith("-01");
 }

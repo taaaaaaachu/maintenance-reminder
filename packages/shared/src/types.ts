@@ -95,6 +95,8 @@ export interface ItemHistoryEntry {
   intervalDays: number;
   nextDueAtBefore: string;
   nextDueAtAfter: string;
+  actorEmail: string | null;
+  actorDisplayName: string | null;
 }
 
 export type NotificationStatus = "success" | "failed";
@@ -109,4 +111,37 @@ export interface NotificationLogEntry {
   status: NotificationStatus;
   errorMessage: string | null;
   sentAt: string;
+}
+
+export interface HouseholdMember {
+  id: string;
+  householdId: string;
+  email: string;
+  displayName: string | null;
+  createdAt: string;
+}
+
+export interface Household {
+  id: string;
+  name: string;
+  createdAt: string;
+  members: HouseholdMember[];
+}
+
+export interface CreateHouseholdInput {
+  name: string;
+}
+
+export interface AddHouseholdMemberInput {
+  email: string;
+  displayName?: string | null;
+}
+
+export interface HouseholdInvite {
+  code: string;
+  householdId: string;
+  channel: NotificationChannel;
+  createdAt: string;
+  usedAt: string | null;
+  expiresAt: string | null;
 }
