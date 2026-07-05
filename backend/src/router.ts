@@ -6,6 +6,7 @@ import { feedRouter } from "./routes/feed.js";
 import { webhookRouter } from "./routes/webhook.js";
 import { notificationLogRouter } from "./routes/notificationLog.js";
 import { adminRouter } from "./routes/admin.js";
+import { authRouter } from "./routes/auth.js";
 import { HttpError } from "./lib/errors.js";
 import type { HonoEnv } from "./types.js";
 
@@ -15,6 +16,7 @@ app.route("/api/items", itemsRouter);
 app.route("/api/settings", settingsRouter);
 app.route("/api/notification-log", notificationLogRouter);
 app.route("/api/admin", adminRouter);
+app.route("/api/auth", authRouter);
 app.route("/feed", feedRouter);
 app.route("/webhook", webhookRouter);
 

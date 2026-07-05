@@ -38,7 +38,8 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api\//, /^\/feed\//, /^\/webhook\//],
         runtimeCaching: [
           {
-            urlPattern: /^\/api\//,
+            // RegExpはフルURL(https://...)に対してテストされ /^\/api\// では一致しないため関数で判定する
+            urlPattern: ({ url }) => url.pathname.startsWith("/api/"),
             handler: "NetworkOnly",
           },
         ],

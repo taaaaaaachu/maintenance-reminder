@@ -22,6 +22,14 @@ describe("api client", () => {
     expect(items).toEqual([{ id: "1" }]);
   });
 
+  it("Accessのリダイレクトを検出できるよう redirect: manual でfetchする", async () => {
+    fetchMock.mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
+
+    await api.listItems();
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/items", expect.objectContaining({ redirect: "manual" }));
+  });
+
   it("listItems appends includeInactive=true when requested", async () => {
     fetchMock.mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
 

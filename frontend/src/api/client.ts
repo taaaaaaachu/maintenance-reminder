@@ -15,12 +15,15 @@ import type {
   UpdateItemInput,
   UpdateNotificationSettingInput,
 } from "@maintenance-reminder/shared";
+import { handleAccessRedirect } from "./session.js";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
     ...options,
+    redirect: "manual",
     headers: { "Content-Type": "application/json", ...options?.headers },
   });
+  handleAccessRedirect(res);
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as ApiError | null;
     throw new Error(body?.error.message ?? `Request failed: ${res.status}`);
