@@ -45,6 +45,8 @@ npm workspaces モノレポ
 - **`Env`型ではなく`Cloudflare.Env`を拡張する**。`cloudflare:workers`の`env`エクスポートが実際に参照する型は`declare global { namespace Cloudflare { interface Env {...} } }`の方(`backend/src/env.d.ts`参照)。
 - **`/feed/*`と`/webhook/*`はSPAフォールバックに食われるので`run_worker_first`が必須**(`wrangler.toml`の`[assets]`)。Workers Static Assetsはデフォルトでは静的アセット/SPAフォールバックを先に評価する。
 - **Cron TriggersにはCloudflareアカウントのworkers.dev登録が必要**(custom domainのみでルーティングしていても)。未登録だとデプロイ時にエラーコード10063が出る。ダッシュボードでWorker URLを一度有効化すればよい。
+- **PWA(Service Worker) + Cloudflare Accessの組み合わせで、セッション切れ時にAPIが「TypeError: Failed to fetch」になる**。SWがアプリシェルをキャッシュ配信するため、Accessセッションが切れてもSPAは起動してしまい、API fetchだけがAccessログインページ(クロスオリジン302)へのリダイレクトをCORSでブロックされて失敗する。対策として、フロントのfetchラッパー(`frontend/src/api/session.ts`)が`redirect: "manual"`でopaqueredirectを検出し、`/api/auth/refresh`(`/`へ302を返すだけのbackendルート)へトップレベル遷移してAccessログイン→アプリ復帰させている。この仕組みを外さないこと。
+- **workboxの`runtimeCaching`で`urlPattern`にRegExpを渡すとフルURL(`https://...`)に対してテストされる**。`/^\/api\//`のようなパス前提の正規表現は一切マッチしない(RegExpRouteはsame-originでも先頭一致を要求)。パス判定は`({ url }) => url.pathname.startsWith("/api/")`のように関数で書く。
 - **Windows環境ではNode/npm/gh等がmise管理**。PowerShell/Bashツールからは素のPATHにmiseのshimsが乗らないため、コマンド先頭で`$env:PATH = "C:\Users\you\AppData\Local\mise\shims;$env:PATH"`(PowerShell)/`export PATH="/c/Users/you/AppData/Local/mise/shims:$PATH"`(Bash)を都度追加する。
 
 ## 開発運用
