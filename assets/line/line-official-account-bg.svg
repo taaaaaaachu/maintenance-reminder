@@ -1,0 +1,69 @@
+<svg viewBox="0 0 1080 878" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#10b981"/>
+      <stop offset="0.55" stop-color="#059669"/>
+      <stop offset="1" stop-color="#047857"/>
+    </linearGradient>
+    <linearGradient id="badge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1e293b"/>
+      <stop offset="1" stop-color="#0f172a"/>
+    </linearGradient>
+    <!-- Material icons (24x24 viewBox paths) -->
+    <path id="refresh" d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+    <path id="bell" d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+    <path id="calendar" d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9.5 17l-3-3 1.06-1.06 1.94 1.94 4.94-4.94L15.5 11l-6 6z"/>
+    <path id="drop" d="M12 2C8.2 7.2 5.5 10.9 5.5 14.5a6.5 6.5 0 0 0 13 0C18.5 10.9 15.8 7.2 12 2z"/>
+    <path id="check" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+    <path id="sparkle" d="M12 0l2.4 9.6L24 12l-9.6 2.4L12 24l-2.4-9.6L0 12l9.6-2.4z"/>
+    <path id="clock" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+    <path id="broom" d="M19.36 2.72l1.42 1.42-5.72 5.71c1.07 1.54 1.22 3.39.32 4.59L9.06 8.12c1.2-.9 3.05-.75 4.59.32l5.71-5.72zM5.93 17.57c-2.01-2.01-3.24-4.41-3.58-6.65l3.94-1.31 6.1 6.1-1.31 3.94c-2.24-.34-4.64-1.57-6.65-3.58-.17-.17-.34-.34-.5-.5z"/>
+  </defs>
+
+  <rect width="1080" height="878" fill="url(#bg)"/>
+
+  <!-- 背景の装飾円 -->
+  <circle cx="120" cy="100" r="220" fill="#ffffff" opacity="0.05"/>
+  <circle cx="1000" cy="760" r="260" fill="#ffffff" opacity="0.05"/>
+  <circle cx="960" cy="120" r="140" fill="#ffffff" opacity="0.06"/>
+  <circle cx="80" cy="740" r="150" fill="#ffffff" opacity="0.06"/>
+
+  <!-- 散らしアイコン(半透明の白) -->
+  <g fill="#ffffff">
+    <use href="#bell"     transform="translate(120 160) scale(4.2) rotate(-12 12 12)" opacity="0.20"/>
+    <use href="#calendar" transform="translate(860 130) scale(4.6) rotate(10 12 12)"  opacity="0.20"/>
+    <use href="#drop"     transform="translate(250 640) scale(3.6) rotate(8 12 12)"   opacity="0.18"/>
+    <use href="#clock"    transform="translate(880 560) scale(4.0) rotate(-8 12 12)"  opacity="0.18"/>
+    <use href="#check"    transform="translate(90 460) scale(3.4) rotate(-6 12 12)"   opacity="0.16"/>
+    <use href="#broom"    transform="translate(760 700) scale(3.8) rotate(14 12 12)"  opacity="0.18"/>
+    <use href="#drop"     transform="translate(660 60)  scale(2.4) rotate(-14 12 12)" opacity="0.14"/>
+    <use href="#bell"     transform="translate(960 380) scale(2.6) rotate(12 12 12)"  opacity="0.14"/>
+    <use href="#calendar" transform="translate(60 630)  scale(2.6) rotate(-10 12 12)" opacity="0.14"/>
+    <use href="#sparkle"  transform="translate(330 110) scale(1.7)" opacity="0.40"/>
+    <use href="#sparkle"  transform="translate(780 300) scale(1.1)" opacity="0.35"/>
+    <use href="#sparkle"  transform="translate(190 330) scale(1.0)" opacity="0.30"/>
+    <use href="#sparkle"  transform="translate(700 620) scale(1.4)" opacity="0.35"/>
+    <use href="#sparkle"  transform="translate(430 720) scale(0.9)" opacity="0.30"/>
+    <use href="#sparkle"  transform="translate(940 250) scale(0.8)" opacity="0.30"/>
+  </g>
+
+  <!-- 泡 -->
+  <g fill="none" stroke="#ffffff" opacity="0.25">
+    <circle cx="380" cy="230" r="14" stroke-width="3"/>
+    <circle cx="415" cy="195" r="8"  stroke-width="3"/>
+    <circle cx="655" cy="690" r="12" stroke-width="3"/>
+    <circle cx="690" cy="730" r="7"  stroke-width="3"/>
+    <circle cx="180" cy="560" r="9"  stroke-width="3"/>
+  </g>
+
+  <!-- 中央バッジ(アプリアイコンと同デザイン) -->
+  <g>
+    <rect x="452" y="212" width="176" height="176" rx="40" fill="#000000" opacity="0.18" transform="translate(0 8)"/>
+    <rect x="452" y="212" width="176" height="176" rx="40" fill="url(#badge)"/>
+    <use href="#refresh" transform="translate(482 242) scale(4.833)" fill="#ffffff"/>
+  </g>
+
+  <!-- アプリ名 -->
+  <text x="540" y="502" text-anchor="middle" font-family="Yu Gothic UI, Yu Gothic, Meiryo, sans-serif" font-size="64" font-weight="bold" fill="#ffffff">お手入れリマインダー</text>
+  <text x="540" y="566" text-anchor="middle" font-family="Yu Gothic UI, Yu Gothic, Meiryo, sans-serif" font-size="30" fill="#d1fae5">おうちのお手入れ時期をお知らせします</text>
+</svg>
