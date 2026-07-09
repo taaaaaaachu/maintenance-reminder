@@ -35,7 +35,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,ico}"],
-        navigateFallbackDenylist: [/^\/api\//, /^\/feed\//, /^\/webhook\//],
+        // /cdn-cgi/access/* はCloudflare AccessのログインコールバックURL。
+        // ここをSWのnavigateFallback(=アプリシェル)で食うと、Accessがセッション
+        // クッキーを再発行できず、以後のAPIが延々302→再ログインループに陥る。必ず除外する。
+        navigateFallbackDenylist: [/^\/api\//, /^\/feed\//, /^\/webhook\//, /^\/cdn-cgi\//],
         runtimeCaching: [
           {
             // RegExpはフルURL(https://...)に対してテストされ /^\/api\// では一致しないため関数で判定する
