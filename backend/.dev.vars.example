@@ -15,3 +15,6 @@ RESEND_FROM_ADDRESS=reminder@example.com
 
 # Pushover (https://pushover.net) でアプリ登録して発行されるAPI Token
 PUSHOVER_API_TOKEN=
+
+# 管理画面を使えるメールアドレス。本番は `wrangler secret put ADMIN_EMAIL` で設定する
+ADMIN_EMAIL=

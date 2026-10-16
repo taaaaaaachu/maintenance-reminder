@@ -17,6 +17,7 @@ export default defineConfig(async () => {
             LINE_CHANNEL_SECRET: "test-line-channel-secret",
             RESEND_API_KEY: "test-resend-key",
             PUSHOVER_API_TOKEN: "test-pushover-token",
+            ADMIN_EMAIL: "admin@example.com",
           },
         },
       }),

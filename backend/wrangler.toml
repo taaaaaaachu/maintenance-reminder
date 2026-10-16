@@ -24,5 +24,6 @@ crons = ["*/30 * * * *"]
 [vars]
 RESEND_FROM_ADDRESS = "reminder@example.com"
 APP_BASE_URL = "https://reminder.example.com"
-ADMIN_EMAIL = "owner@example.com"
+# ADMIN_EMAIL(管理画面を使えるメールアドレス)は個人情報のためvarsに書かず、
+# 本番は `wrangler secret put ADMIN_EMAIL`、ローカルは .dev.vars で設定する
 LINE_INVITE_URL = "https://line.me/R/ti/p/@example"
