@@ -18,3 +18,6 @@ PUSHOVER_API_TOKEN=
 
 # 管理画面を使えるメールアドレス。本番は `wrangler secret put ADMIN_EMAIL` で設定する
 ADMIN_EMAIL=
+
+# ローカルでログインしているとみなすメールアドレス(Cloudflare Accessがないローカル専用)。本番では設定しない
+DEV_HOUSEHOLD_EMAIL=owner@example.com
