@@ -20,6 +20,10 @@ describe("verifyLineSignature", () => {
     expect(await verifyLineSignature("secret", body, signature)).toBe(true);
   });
 
+  it("returns false when the signature is not valid base64", async () => {
+    expect(await verifyLineSignature("secret", "{}", "not base64!!")).toBe(false);
+  });
+
   it("returns false when the body has been tampered with", async () => {
     const body = JSON.stringify({ events: [] });
     const signature = await sign("secret", body);

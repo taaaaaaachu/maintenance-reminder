@@ -34,9 +34,14 @@ export async function verifyLineSignature(channelSecret: string, rawBody: string
     new TextEncoder().encode(channelSecret),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"],
+    ["verify"],
   );
-  const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody));
-  const computed = btoa(String.fromCharCode(...new Uint8Array(mac)));
-  return computed === signature;
+  let signatureBytes: Uint8Array;
+  try {
+    signatureBytes = Uint8Array.from(atob(signature), (ch) => ch.charCodeAt(0));
+  } catch {
+    return false;
+  }
+  // crypto.subtle.verifyは定数時間で比較する(文字列の===比較はタイミング攻撃の余地がある)
+  return crypto.subtle.verify("HMAC", key, signatureBytes, new TextEncoder().encode(rawBody));
 }
