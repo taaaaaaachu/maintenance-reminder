@@ -75,7 +75,7 @@ npx wrangler secret put PUSHOVER_API_TOKEN
 
 ### 7. wrangler.tomlを自分の環境向けに調整
 
-`backend/wrangler.toml` の以下の値はサンプル(開発者本人のもの)なので書き換えてください。
+`backend/wrangler.toml` の以下の値はプレースホルダー(`example.com`等)なので書き換えてください。
 
 - `[[routes]] pattern`(独自ドメインを使わない場合はこの`[[routes]]`ブロックごと削除し、`workers_dev = true`にすると`*.workers.dev`のURLで動きます)
 - `[vars] RESEND_FROM_ADDRESS`
@@ -101,6 +101,8 @@ npm run deploy
 - **LINEのWebhook URL**: LINE Developersのチャネル設定で `https://<デプロイ先ドメイン>/webhook/line` を指定し、Webhookを有効化してください。応答メッセージ機能はオフにしておくことを推奨します(Bot自身の自動応答と競合するため)。
 - **Cloudflare Access**: アプリ全体を認証で保護したい場合、Zero Trustダッシュボードで保護対象アプリケーションを作成してください。ただし `/feed/*`(カレンダー購読)と `/webhook/*`(LINE Webhook)は外部サービスからの直接アクセスが必要なため、これらのパスだけ「Bypass」ポリシーの別アプリケーションとして除外する必要があります。
 - **GitHub Actions CI/CD**: `.github/workflows/deploy.yml` がmainブランチへのpushで自動テスト→D1マイグレーション適用→デプロイを行います。使う場合はリポジトリのSecretsに `CLOUDFLARE_API_TOKEN`(D1編集・Workers編集権限が必要)を登録してください。
+  - このリポジトリのワークフローは、`wrangler.toml`のプレースホルダー(`reminder.example.com`等)をデプロイ直前にSecretsの`PROD_HOSTNAME`(例: `reminder.your-domain.com`)・`RESEND_FROM_ADDRESS`・`LINE_INVITE_URL`で置き換えます。`wrangler.toml`に直接自分の値を書く場合は、`deploy.yml`の「Inject production values into wrangler.toml」ステップを削除してください。
+- **管理画面(`/admin`)**: 世帯やメンバーを管理する画面です。`ADMIN_EMAIL`(管理者のメールアドレス)を`backend/.dev.vars`と本番の`npx wrangler secret put ADMIN_EMAIL`で設定すると、そのユーザーのときだけヘッダーにリンクが表示されます。
 
 ## よく使うコマンド
 
@@ -108,3 +110,9 @@ npm run deploy
 npm run typecheck   # 全ワークスペースの型チェック
 npm run test         # 全ワークスペースのテスト
 ```
+
+## ライセンス
+
+[MIT License](LICENSE)
+
+アイコン(`assets/line/line-official-account-bg.svg`等)の一部に[Material Icons](https://fonts.google.com/icons)(Google, [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0))の図形を使用しています。

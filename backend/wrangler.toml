@@ -21,6 +21,8 @@ database_id = "d298b465-997d-471e-9f76-439135b9e758"
 [triggers]
 crons = ["*/30 * * * *"]
 
+# routesのpatternと以下のvarsはプレースホルダー。本番の値はGitHub Actions(deploy.yml)が
+# デプロイ直前にGitHub Secretsから差し込む。そのためローカルから直接 wrangler deploy しないこと。
 [vars]
 RESEND_FROM_ADDRESS = "reminder@example.com"
 APP_BASE_URL = "https://reminder.example.com"

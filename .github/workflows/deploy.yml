@@ -26,6 +26,20 @@ jobs:
           node-version: 24
       - run: npm ci
       - run: npm run build:frontend
+      # 本番のドメイン等は公開リポジトリに含めないため、GitHub Secretsからwrangler.tomlへ差し込む
+      - name: Inject production values into wrangler.toml
+        working-directory: backend
+        env:
+          PROD_HOSTNAME: ${{ secrets.PROD_HOSTNAME }}
+          RESEND_FROM_ADDRESS: ${{ secrets.RESEND_FROM_ADDRESS }}
+          LINE_INVITE_URL: ${{ secrets.LINE_INVITE_URL }}
+        run: |
+          sed -i \
+            -e "s|reminder\.example\.com|${PROD_HOSTNAME:?}|g" \
+            -e "s|reminder@example\.com|${RESEND_FROM_ADDRESS:?}|" \
+            -e "s|https://line\.me/R/ti/p/@example|${LINE_INVITE_URL:?}|" \
+            wrangler.toml
+          ! grep -n "example" wrangler.toml
       - name: Apply D1 migrations
         uses: cloudflare/wrangler-action@v3
         with:

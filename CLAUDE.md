@@ -49,7 +49,6 @@ npm workspaces モノレポ
 - **Accessのログインコールバック`/cdn-cgi/access/*`もSWの`navigateFallbackDenylist`に必ず含める**(`frontend/vite.config.ts`)。Accessは認証後ブラウザを`/cdn-cgi/access/authorized?nonce=...&state=...`へリダイレクトし、そのレスポンスでセッションクッキー(`CF_Authorization`)を再発行して本来の宛先へ302で戻す。この`/cdn-cgi/`ナビゲーションをSWのnavigateFallback(アプリシェル)が食うと、コールバックがハンドシェイクを完了できずクッキーが再発行されないため、SPAはコールバックURL上で起動してしまい以後のAPIが延々302→「再ログインしています…」ループに陥る(通常リロードではSWが介入するため再現、`Ctrl+Shift+R`はSWをバイパスするので正常表示される)。上の`redirect: "manual"`の仕組みだけでは救えず、`navigateFallbackDenylist`に`/^\/cdn-cgi\//`が入っていることが前提。
 - **SWの不具合修正は「デプロイすれば直る」とは限らない(未認証端末のSW更新デッドロック)**。SWの更新チェック(`GET /sw.js`)やprecacheのアセット取得もAccess保護下にあり、未認証だと302が返ってSWスクリプトのfetchは失敗扱いになる。そのため「古いSWがAccessコールバックを食う→認証が完了しない→未認証のままだからSW更新も失敗する」の循環に陥った端末は、修正版SWをデプロイしても自力で復旧できない。復旧には端末側の操作(デスクトップ: 壊れたページで`Ctrl+Shift+R`、iOSホーム画面PWA: 削除→Safariでログイン→再追加、Android PWA: サイトデータ削除)か、Accessアプリを一時的にBypassにしてSW更新を通す時限対応が必要。この教訓から、SPAが`/cdn-cgi/`のURL上で起動してしまった場合の自己修復コード(`frontend/src/swRecovery.ts`: SW全解除→`/api/auth/refresh`へ遷移。`main.tsx`の起動時チェックから呼ぶ)を入れている。外さないこと。
 - **workboxの`runtimeCaching`で`urlPattern`にRegExpを渡すとフルURL(`https://...`)に対してテストされる**。`/^\/api\//`のようなパス前提の正規表現は一切マッチしない(RegExpRouteはsame-originでも先頭一致を要求)。パス判定は`({ url }) => url.pathname.startsWith("/api/")`のように関数で書く。
-- **Windows環境ではNode/npm/gh等がmise管理**。PowerShell/Bashツールからは素のPATHにmiseのshimsが乗らないため、コマンド先頭で`$env:PATH = "C:\Users\you\AppData\Local\mise\shims;$env:PATH"`(PowerShell)/`export PATH="/c/Users/you/AppData/Local/mise/shims:$PATH"`(Bash)を都度追加する。
 
 ## 開発運用
 
@@ -57,21 +56,5 @@ npm workspaces モノレポ
 - テスト: `npm run test`(backend: vitest + vitest-pool-workers、frontend: vitest + Testing Library)
 - デプロイ: `npm run deploy`(frontendビルド→`wrangler deploy`)。GitHub Actions(`.github/workflows/deploy.yml`)がmainブランチへのpushで自動的にD1マイグレーション適用+デプロイまで行う。**つまりpush = 即本番反映**。
 - 実装のたびに対象範囲の単体テストを書いて実行し、意味のある単位でこまめにコミットする(グローバル指示`~/.claude/CLAUDE.md`のルールをこのプロジェクトでも適用)。
+- 本番環境・運用手順など個人の環境に依存する指示は、gitignore対象の`CLAUDE.local.md`に書く(公開リポジトリのため)。
 - **push前にはユーザーのローカル動作確認を挟むこと。** コミットまでは自動で進めてよいが、`git push`は保留し、確認してほしい項目をまとめて伝えてから、ユーザーの確認OKを待って実行する。
-
-## 本番環境
-
-- URL: `reminder.example.com`(Cloudflare Access配下。`/feed/*`と`/webhook/*`のみAccessをBypass)
-- リポジトリ: `https://github.com/taaaaaaachu/maintenance-reminder`(private)
-
-## 共有用テンプレートリポジトリとの同期
-
-個人情報・環境固有値(独自ドメイン、D1のdatabase_id、送信元メールアドレス等)を除去した共有用テンプレート `https://github.com/taaaaaaachu/maintenance-reminder-template`(private)を別途用意している。このリポジトリとはgit履歴が完全に独立している(テンプレート側は個人情報除去のため単一コミットで作り直したもの)ため、`git merge`等での自動同期はできない。
-
-「テンプレートにも反映して」と言われたら、以下の手順で同期する。
-
-1. 軽量タグ`template-synced`が指すコミットから現在のHEADまでの差分を確認する: `git diff template-synced..HEAD`
-2. 環境固有ファイルは反映しない: `backend/wrangler.toml`の個人値(ドメイン・database_id・送信元アドレス)、`backend/.dev.vars`
-3. **`CLAUDE.md`は他のファイルと一緒に`cp`で機械的にコピーしない。** 個人情報(独自ドメイン・GitHubユーザー名・リポジトリURL等)を含む「本番環境」セクションと、このセクション自体(「共有用テンプレートリポジトリとの同期」。本番運用手順であり、テンプレート利用者には無関係かつリポジトリURLという個人情報を含む)を必ず除外し、それ以外の差分(設計判断・ハマりどころなど)だけをテンプレート側の対応箇所に手動で追記・編集する。過去に一括`cp`で丸ごと上書きしてこれらのセクションが個人情報ごと混入した事故があった。
-4. テンプレート側リポジトリ(スクラッチ領域等に別途clone)に差分を適用し、個人情報が混入していないことをgrep等で再確認してからコミット・push
-5. 反映が終わったら、`template-synced`タグを最新コミットに付け直してpushする: `git tag -f template-synced <commit> && git push origin template-synced -f`

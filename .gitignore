@@ -4,4 +4,5 @@ dist/
 .dev.vars
 *.local
 .claude/
+CLAUDE.local.md
 .DS_Store
