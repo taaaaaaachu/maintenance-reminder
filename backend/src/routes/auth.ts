@@ -14,4 +14,4 @@ export const authRouter = new Hono<HonoEnv>();
 authRouter.get("/refresh", (c) => c.redirect("/", 302));
 
 // フロントが管理画面へのリンクを出すかの判定用。
-authRouter.get("/me", (c) => c.json<Me>({ isAdmin: isAdmin(c) }));
+authRouter.get("/me", async (c) => c.json<Me>({ isAdmin: await isAdmin(c) }));

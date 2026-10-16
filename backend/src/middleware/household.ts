@@ -2,10 +2,10 @@ import { createMiddleware } from "hono/factory";
 import { getHouseholdIdByEmail } from "../db/households.js";
 import { unauthorized } from "../lib/errors.js";
 import type { HonoEnv } from "../types.js";
+import { resolveUserEmail } from "./accessAuth.js";
 
 export const householdMiddleware = createMiddleware<HonoEnv>(async (c, next) => {
-  const email = c.req.header("cf-access-authenticated-user-email")?.trim().toLowerCase();
-  const resolvedEmail = email ?? c.env.DEV_HOUSEHOLD_EMAIL?.trim().toLowerCase();
+  const resolvedEmail = await resolveUserEmail(c);
 
   if (!resolvedEmail) throw unauthorized("認証情報がありません");
 

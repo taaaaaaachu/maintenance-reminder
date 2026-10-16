@@ -18,6 +18,10 @@ export default defineConfig(async () => {
             RESEND_API_KEY: "test-resend-key",
             PUSHOVER_API_TOKEN: "test-pushover-token",
             ADMIN_EMAIL: "admin@example.com",
+            // テストはAccess未設定のローカル相当で実行し、ユーザーはcf-access-authenticated-user-email
+            // ヘッダーで切り替える。DEV_HOUSEHOLD_EMAILはどの世帯にも属さないアドレスにしておく。
+            ACCESS_AUD: "",
+            DEV_HOUSEHOLD_EMAIL: "dev@example.com",
           },
         },
       }),

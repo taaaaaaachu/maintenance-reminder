@@ -73,6 +73,7 @@ cp backend/.dev.vars.example backend/.dev.vars
 | `PUSHOVER_API_TOKEN` | Pushoverのアプリ登録画面 |
 | `ADMIN_EMAIL` | 管理画面を使えるメールアドレス |
 | `DEV_HOUSEHOLD_EMAIL` | ローカルでログインしているとみなすメールアドレス(例: `owner@example.com`)。ローカルにはCloudflare Accessがないため使います。本番では設定しないでください |
+| `ACCESS_AUD` | 空にする。`wrangler.toml`の値を上書きして、ローカルではAccessのJWT検証を無効にします |
 
 ### 6. 本番用シークレットを設定
 
@@ -91,7 +92,8 @@ npx wrangler secret put ADMIN_EMAIL
 
 `backend/wrangler.toml` の以下の値はプレースホルダー(`example.com`等)です。
 
-- `[[routes]] pattern`(独自ドメインを使わない場合はこの`[[routes]]`ブロックごと削除し、`workers_dev = true`にすると`*.workers.dev`のURLで動きます)
+- `[[routes]] pattern`(Cloudflare Accessで保護するため、Cloudflareで管理している独自ドメインが必要です)
+- `[vars] ACCESS_TEAM_DOMAIN`, `[vars] ACCESS_AUD`(後述のCloudflare Accessの設定で確認できる値)
 - `[vars] RESEND_FROM_ADDRESS`
 - `[vars] APP_BASE_URL`(通知メッセージ内のリンクに使われるアプリのURL。上記のドメイン設定と合わせてください)
 - `[vars] LINE_INVITE_URL`(LINE公式アカウントの友だち追加URL。通知設定画面に表示されます)
@@ -127,16 +129,18 @@ npm run deploy
 | `PROD_HOSTNAME` | 本番のドメイン(例: `reminder.your-domain.com`) |
 | `RESEND_FROM_ADDRESS` | 本番の送信元アドレス |
 | `LINE_INVITE_URL` | LINE公式アカウントの友だち追加URL |
+| `ACCESS_TEAM_DOMAIN` | Cloudflare Accessのteam domain(例: `your-team.cloudflareaccess.com`) |
 
 デプロイ直前に、`wrangler.toml`のプレースホルダーをこれらの値で置き換えます。`wrangler.toml`に直接自分の値を書く場合は、`deploy.yml`の「Inject production values into wrangler.toml」ステップを削除してください。
 
 ## Cloudflare Accessの設定
 
-アプリにはログイン機能がなく、認証はCloudflare Access(Zero Trust)に任せています。Accessが付与する`cf-access-authenticated-user-email`ヘッダーのメールアドレスで世帯を判定するため、**本番では必ずAccessでアプリ全体を保護してください**。
+アプリにはログイン機能がなく、認証はCloudflare Access(Zero Trust)に任せています。Accessが付与するJWT(`Cf-Access-Jwt-Assertion`)の署名・aud・issuerを検証し、そのメールアドレスで世帯を判定します(`backend/src/middleware/accessAuth.ts`)。**本番では必ずAccessでアプリ全体を保護してください**。
 
 - Zero Trustダッシュボードで、デプロイ先ドメインを保護するアプリケーションを作成します。
 - `/feed/*`(カレンダー購読)と`/webhook/*`(LINE Webhook)は外部サービスから直接アクセスされるため、これらのパスだけ「Bypass」ポリシーの別アプリケーションとして除外します。
-- `workers_dev = false`のままにしてください。`*.workers.dev`のURLはAccessで保護されません。
+- 作成したアプリケーションのAUDタグ(Access > Applications > 該当アプリ)を`wrangler.toml`の`ACCESS_AUD`に、team domainを`ACCESS_TEAM_DOMAIN`に設定します。
+- `workers_dev = false`と`preview_urls = false`のままにしてください。workers.devとPreview URLはAccessで保護されません。
 
 ## LINE連携
 

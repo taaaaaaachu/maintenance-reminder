@@ -1,7 +1,9 @@
 name = "maintenance-reminder"
 main = "src/index.ts"
 compatibility_date = "2026-07-01"
+# workers.devとPreview URLはAccessで保護されないため無効にする
 workers_dev = false
+preview_urls = false
 
 [[routes]]
 pattern = "reminder.example.com"
@@ -29,3 +31,6 @@ APP_BASE_URL = "https://reminder.example.com"
 # ADMIN_EMAIL(管理画面を使えるメールアドレス)は個人情報のためvarsに書かず、
 # 本番は `wrangler secret put ADMIN_EMAIL`、ローカルは .dev.vars で設定する
 LINE_INVITE_URL = "https://line.me/R/ti/p/@example"
+# Cloudflare AccessのJWT検証用。AUDはZero Trust > Access > Applications > 該当アプリで確認できる
+ACCESS_TEAM_DOMAIN = "example.cloudflareaccess.com"
+ACCESS_AUD = "5d79ce2db3596dfba97bf30f90acd410ed738f9af393a71abf66cb0f858c3764"

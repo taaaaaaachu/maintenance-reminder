@@ -21,3 +21,6 @@ ADMIN_EMAIL=
 
 # ローカルでログインしているとみなすメールアドレス(Cloudflare Accessがないローカル専用)。本番では設定しない
 DEV_HOUSEHOLD_EMAIL=owner@example.com
+
+# ローカルにはAccessがないため、wrangler.tomlのACCESS_AUDを空で上書きしてJWT検証を無効にする
+ACCESS_AUD=

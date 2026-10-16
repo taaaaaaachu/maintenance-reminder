@@ -8,6 +8,8 @@ export interface AppBindings {
   APP_BASE_URL: string;
   ADMIN_EMAIL: string;
   LINE_INVITE_URL: string;
+  ACCESS_TEAM_DOMAIN: string;
+  ACCESS_AUD: string;
   DEV_HOUSEHOLD_EMAIL?: string;
 }
 

@@ -27,7 +27,7 @@ npm workspaces モノレポ
 
 ## 実装上の重要な設計判断
 
-- **世帯の判定はCloudflare Accessが付与する`cf-access-authenticated-user-email`ヘッダーで行う**(`backend/src/middleware/household.ts`)。メールアドレスを`household_members`で引いて`householdId`を決め、以降のDB操作はすべてこの`householdId`で絞り込む。ヘッダーを信用する設計なので、本番はAccessでアプリ全体を保護し、`workers_dev = false`を維持すること。ローカルでは`DEV_HOUSEHOLD_EMAIL`(`.dev.vars`)で代用する。
+- **ユーザーの判定はCloudflare AccessのJWT(`Cf-Access-Jwt-Assertion`)を検証して行う**(`backend/src/middleware/accessAuth.ts`の`resolveUserEmail`)。署名・iss・aud(`ACCESS_TEAM_DOMAIN`/`ACCESS_AUD`)・有効期限を`jose`で検証し、`email`クレームを使う。`cf-access-authenticated-user-email`ヘッダーをそのまま信用しないこと(Accessを経由しない経路から偽装できるため)。得たメールアドレスを`household_members`で引いて`householdId`を決め(`backend/src/middleware/household.ts`)、以降のDB操作はすべてこの`householdId`で絞り込む。`ACCESS_AUD`が空のローカル開発・テストでは、`DEV_HOUSEHOLD_EMAIL`が設定されている場合に限り`cf-access-authenticated-user-email`ヘッダー(なければ`DEV_HOUSEHOLD_EMAIL`)を使う。
 - **管理者は`ADMIN_EMAIL`(Workers Secret)と一致するメールアドレス**。判定は`backend/src/routes/admin.ts`の`isAdmin()`に集約し、管理APIのミドルウェアと`GET /api/auth/me`の両方から使う。
 - **LINEの宛先登録は招待コード経由**。管理画面で世帯ごとに招待コード(有効期限7日、`household_invites`)を発行し、LINE公式アカウントを友だち追加したユーザーがBotにコードを送ると、その世帯の通知宛先として登録される。
 - **通知時刻・通知タイミングはアイテムごとの設定**(`items.notify_time`, `items.notify_days_before`)。過去に一度グローバル設定として実装したが、ユーザー要望により全面的にアイテムごとに作り直した経緯がある。**今後もこの粒度を維持すること**(グローバル設定に戻さない)。
@@ -47,7 +47,7 @@ npm workspaces モノレポ
 - **`@cloudflare/vitest-pool-workers`は新API(`cloudflareTest` Viteプラグイン)を使う**。`defineWorkersConfig`/`cloudflare:test`は古いAPIで動かない。テスト内で環境にアクセスするときは`cloudflare:workers`から`env`/`exports`をimportする。
 - **`Env`型ではなく`Cloudflare.Env`を拡張する**。`cloudflare:workers`の`env`エクスポートが実際に参照する型は`declare global { namespace Cloudflare { interface Env {...} } }`の方(`backend/src/env.d.ts`参照)。
 - **`/feed/*`と`/webhook/*`はSPAフォールバックに食われるので`run_worker_first`が必須**(`wrangler.toml`の`[assets]`)。Workers Static Assetsはデフォルトでは静的アセット/SPAフォールバックを先に評価する。
-- **Cron TriggersにはCloudflareアカウントのworkers.dev登録が必要**(custom domainのみでルーティングしていても)。未登録だとデプロイ時にエラーコード10063が出る。ダッシュボードでWorker URLを一度有効化すればよい。
+- **Cron TriggersにはCloudflareアカウントのworkers.dev登録が必要**(custom domainのみでルーティングしていても)。未登録だとデプロイ時にエラーコード10063が出る。必要なのはアカウントのworkers.devサブドメインの登録で、このWorkerのworkers.dev URLは`workers_dev = false`のまま無効にしておく(Accessで保護されないため)。
 - **PWA(Service Worker) + Cloudflare Accessの組み合わせで、セッション切れ時にAPIが「TypeError: Failed to fetch」になる**。SWがアプリシェルをキャッシュ配信するため、Accessセッションが切れてもSPAは起動してしまい、API fetchだけがAccessログインページ(クロスオリジン302)へのリダイレクトをCORSでブロックされて失敗する。対策として、フロントのfetchラッパー(`frontend/src/api/session.ts`)が`redirect: "manual"`でopaqueredirectを検出し、`/api/auth/refresh`(`/`へ302を返すだけのbackendルート)へトップレベル遷移してAccessログイン→アプリ復帰させている。この仕組みを外さないこと。
 - **Accessのログインコールバック`/cdn-cgi/access/*`もSWの`navigateFallbackDenylist`に必ず含める**(`frontend/vite.config.ts`)。Accessは認証後ブラウザを`/cdn-cgi/access/authorized?nonce=...&state=...`へリダイレクトし、そのレスポンスでセッションクッキー(`CF_Authorization`)を再発行して本来の宛先へ302で戻す。この`/cdn-cgi/`ナビゲーションをSWのnavigateFallback(アプリシェル)が食うと、コールバックがハンドシェイクを完了できずクッキーが再発行されないため、SPAはコールバックURL上で起動してしまい以後のAPIが延々302→「再ログインしています…」ループに陥る(通常リロードではSWが介入するため再現、`Ctrl+Shift+R`はSWをバイパスするので正常表示される)。上の`redirect: "manual"`の仕組みだけでは救えず、`navigateFallbackDenylist`に`/^\/cdn-cgi\//`が入っていることが前提。
 - **SWの不具合修正は「デプロイすれば直る」とは限らない(未認証端末のSW更新デッドロック)**。SWの更新チェック(`GET /sw.js`)やprecacheのアセット取得もAccess保護下にあり、未認証だと302が返ってSWスクリプトのfetchは失敗扱いになる。そのため「古いSWがAccessコールバックを食う→認証が完了しない→未認証のままだからSW更新も失敗する」の循環に陥った端末は、修正版SWをデプロイしても自力で復旧できない。復旧には端末側の操作(デスクトップ: 壊れたページで`Ctrl+Shift+R`、iOSホーム画面PWA: 削除→Safariでログイン→再追加、Android PWA: サイトデータ削除)か、Accessアプリを一時的にBypassにしてSW更新を通す時限対応が必要。この教訓から、SPAが`/cdn-cgi/`のURL上で起動してしまった場合の自己修復コード(`frontend/src/swRecovery.ts`: SW全解除→`/api/auth/refresh`へ遷移。`main.tsx`の起動時チェックから呼ぶ)を入れている。外さないこと。
@@ -57,7 +57,7 @@ npm workspaces モノレポ
 
 - 型チェック: `npm run typecheck`(shared→backend→frontendの順)
 - テスト: `npm run test`(backend: vitest + vitest-pool-workers、frontend: vitest + Testing Library)
-- デプロイ: `npm run deploy`(frontendビルド→`wrangler deploy`)。GitHub Actions(`.github/workflows/deploy.yml`)がmainブランチへのpushで自動的にD1マイグレーション適用+デプロイまで行う。**つまりpush = 即本番反映**。
+- デプロイ: GitHub Actions(`.github/workflows/deploy.yml`)がmainブランチへのpushで自動的にD1マイグレーション適用+デプロイまで行う。**つまりpush = 即本番反映**。`wrangler.toml`のドメイン等はプレースホルダーなので、**ローカルから`npm run deploy`しないこと**(本番の値がプレースホルダーで上書きされる)。
 - 実装のたびに対象範囲の単体テストを書いて実行し、意味のある単位でこまめにコミットする(グローバル指示`~/.claude/CLAUDE.md`のルールをこのプロジェクトでも適用)。
 - 本番環境・運用手順など個人の環境に依存する指示は、gitignore対象の`CLAUDE.local.md`に書く(公開リポジトリのため)。
 - **push前にはユーザーのローカル動作確認を挟むこと。** コミットまでは自動で進めてよいが、`git push`は保留し、確認してほしい項目をまとめて伝えてから、ユーザーの確認OKを待って実行する。

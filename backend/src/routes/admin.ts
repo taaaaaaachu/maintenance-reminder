@@ -5,6 +5,7 @@ import * as invitesDb from "../db/invites.js";
 import { badRequest, notFound, unauthorized } from "../lib/errors.js";
 import { daysFromNowIso } from "../lib/date.js";
 import type { Context } from "hono";
+import { resolveUserEmail } from "../middleware/accessAuth.js";
 import type { HonoEnv } from "../types.js";
 
 const INVITE_EXPIRES_IN_DAYS = 7;
@@ -20,15 +21,13 @@ const addMemberSchema = z.object({
 
 export const adminRouter = new Hono<HonoEnv>();
 
-export function isAdmin(c: Context<HonoEnv>): boolean {
-  const email = (c.req.header("cf-access-authenticated-user-email") ?? c.env.DEV_HOUSEHOLD_EMAIL)
-    ?.trim()
-    .toLowerCase();
+export async function isAdmin(c: Context<HonoEnv>): Promise<boolean> {
+  const email = await resolveUserEmail(c);
   return !!email && email === c.env.ADMIN_EMAIL.trim().toLowerCase();
 }
 
 adminRouter.use("*", async (c, next) => {
-  if (!isAdmin(c)) throw unauthorized("管理者のみアクセスできます");
+  if (!(await isAdmin(c))) throw unauthorized("管理者のみアクセスできます");
   await next();
 });
 

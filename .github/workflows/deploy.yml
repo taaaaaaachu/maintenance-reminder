@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -33,11 +36,13 @@ jobs:
           PROD_HOSTNAME: ${{ secrets.PROD_HOSTNAME }}
           RESEND_FROM_ADDRESS: ${{ secrets.RESEND_FROM_ADDRESS }}
           LINE_INVITE_URL: ${{ secrets.LINE_INVITE_URL }}
+          ACCESS_TEAM_DOMAIN: ${{ secrets.ACCESS_TEAM_DOMAIN }}
         run: |
           sed -i \
             -e "s|reminder\.example\.com|${PROD_HOSTNAME:?}|g" \
             -e "s|reminder@example\.com|${RESEND_FROM_ADDRESS:?}|" \
             -e "s|https://line\.me/R/ti/p/@example|${LINE_INVITE_URL:?}|" \
+            -e "s|example\.cloudflareaccess\.com|${ACCESS_TEAM_DOMAIN:?}|" \
             wrangler.toml
           ! grep -n "example" wrangler.toml
       - name: Apply D1 migrations
