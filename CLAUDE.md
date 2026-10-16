@@ -1,10 +1,10 @@
 # お手入れリマインダー(maintenance_reminder)
 
-家電・家事などの定期的なお手入れ時期をLINE/メール/Pushoverで通知し、Google/Appleカレンダーにも連携できる個人(家族)用Webアプリ。
+家電・家事などの定期的なお手入れ時期をLINE/メール/Pushoverで通知し、Google/Appleカレンダーにも連携できる家族向けWebアプリ。
 
 クローンして自分の環境でセットアップする手順は [README.md](README.md) を参照。このファイル(CLAUDE.md)はアーキテクチャと実装上の注意点をまとめたもの。
 
-- **単一世帯・単一DB前提**であり、マルチテナントSaaSではない。他世帯への提供は「ソースを渡して各自Cloudflareにデプロイしてもらう」方針(SaaS化は別プロジェクト扱いとして見送り済み)。
+- **1つのデプロイ・1つのD1を複数の世帯で共有し、データは世帯(`households`)単位で分離する**。世帯は管理者が管理画面(`/admin`)で作成し、メンバーのメールアドレスを登録する。セルフサインアップのSaaSではない。
 - 認証は自前実装せず**Cloudflare Access(Zero Trust)**に委譲。アプリ内にログイン機能はない。
 - サーバー代をかけない制約が強く、**Cloudflareの無料枠内で完結**させる設計方針。
 
@@ -19,18 +19,21 @@ npm workspaces モノレポ
 └── frontend          … React + Vite (SPA)
 ```
 
-- **backend**: Hono + Zod。`backend/src/router.ts`が`/api/items`, `/api/settings`, `/api/notification-log`, `/feed`, `/webhook`をマウント。D1へは素のSQL(ORM不使用、テーブル数が少なく過剰な抽象化のため)。
-- **frontend**: React 19 + TanStack Query + Tailwind CSS v4。タブ切り替え(アイテム一覧/通知設定/通知履歴)のシンプルなSPA。
+- **backend**: Hono + Zod。`backend/src/router.ts`が`/api/items`, `/api/settings`, `/api/notification-log`, `/api/admin`, `/api/auth`, `/feed`, `/webhook`をマウント。D1へは素のSQL(ORM不使用、テーブル数が少なく過剰な抽象化のため)。
+- **frontend**: React 19 + TanStack Query + Tailwind CSS v4。タブ切り替え(アイテム一覧/通知設定/通知履歴)のシンプルなSPA。パスが`/admin`のときだけ管理画面(`frontend/src/admin/AdminApp.tsx`)を表示し、通常画面のヘッダーには`GET /api/auth/me`が`isAdmin: true`を返したときだけ管理画面へのリンクを出す。
 - **DB**: Cloudflare D1(SQLite互換)。マイグレーションは`backend/migrations/*.sql`を`wrangler d1 migrations apply`で適用。
 - **通知**: LINE Messaging API(push+reply)、Resend(メール)、Pushover。`backend/src/notifications/dispatcher.ts`が宛先ごとにfan-out。
 - **カレンダー連携**: OAuth不要のICS購読フィード(`/feed/:token.ics`)。Google/Apple双方に対応。
 
 ## 実装上の重要な設計判断
 
+- **世帯の判定はCloudflare Accessが付与する`cf-access-authenticated-user-email`ヘッダーで行う**(`backend/src/middleware/household.ts`)。メールアドレスを`household_members`で引いて`householdId`を決め、以降のDB操作はすべてこの`householdId`で絞り込む。ヘッダーを信用する設計なので、本番はAccessでアプリ全体を保護し、`workers_dev = false`を維持すること。ローカルでは`DEV_HOUSEHOLD_EMAIL`(`.dev.vars`)で代用する。
+- **管理者は`ADMIN_EMAIL`(Workers Secret)と一致するメールアドレス**。判定は`backend/src/routes/admin.ts`の`isAdmin()`に集約し、管理APIのミドルウェアと`GET /api/auth/me`の両方から使う。
+- **LINEの宛先登録は招待コード経由**。管理画面で世帯ごとに招待コード(有効期限7日、`household_invites`)を発行し、LINE公式アカウントを友だち追加したユーザーがBotにコードを送ると、その世帯の通知宛先として登録される。
 - **通知時刻・通知タイミングはアイテムごとの設定**(`items.notify_time`, `items.notify_days_before`)。過去に一度グローバル設定として実装したが、ユーザー要望により全面的にアイテムごとに作り直した経緯がある。**今後もこの粒度を維持すること**(グローバル設定に戻さない)。
 - **通知宛先は複数登録可能**(`notification_recipients`テーブル)。チャネル(line/email/pushover)ごとに複数の宛先を登録でき、`notification_settings.config_json`(単一宛先前提の古い設計)は廃止済み(migration 0004でDROP COLUMN)。同じ設計に戻さないこと。
-- **LINEはユーザーの自己登録制**。LINE公式アカウントを友だち追加すると`/webhook/line`が発火し、`x-line-signature`をHMAC-SHA256で検証した上で自動的に`notification_recipients`へ登録される。手動でuserIdを入力させる設計ではない。
-- **秘密情報はWorkers Secretsに、宛先などの可変設定はD1に**という分離。`LINE_CHANNEL_ACCESS_TOKEN`, `LINE_CHANNEL_SECRET`, `RESEND_API_KEY`, `PUSHOVER_API_TOKEN`はSecrets、`RESEND_FROM_ADDRESS`は`wrangler.toml`の`[vars]`。
+- **LINEはユーザーの自己登録制**。`/webhook/line`は`x-line-signature`をHMAC-SHA256で検証したうえで、上記の招待コードを受け取ると`notification_recipients`へ登録する。手動でuserIdを入力させる設計ではない。
+- **秘密情報はWorkers Secretsに、宛先などの可変設定はD1に**という分離。`LINE_CHANNEL_ACCESS_TOKEN`, `LINE_CHANNEL_SECRET`, `RESEND_API_KEY`, `PUSHOVER_API_TOKEN`, `ADMIN_EMAIL`はSecrets、`RESEND_FROM_ADDRESS`, `APP_BASE_URL`, `LINE_INVITE_URL`は`wrangler.toml`の`[vars]`。`[vars]`と`[[routes]]`のドメイン等はプレースホルダーで、本番値は`deploy.yml`がGitHub Secretsから差し込む(公開リポジトリに個人の値を含めないため)。
 - **ICSのUIDは`{item.id}@ドメイン`で固定**。item.idは不変UUIDなので、これを変えるとGoogle/Appleカレンダー側で予定が重複登録される。
 - **日付はJST基準**。Workers/D1の内部時刻はUTCなので、「今日」の判定は`backend/src/lib/date.ts`のJST変換ヘルパー(`todayJstDateString`等)に必ず集約する。バラバラに`new Date()`で当日判定しない。
 - **D1の外部キーはON DELETE CASCADEが実際に効く**(notification_logはitem削除で連動削除される)。「削除後もログは残る」という前提でコードやテストを書かない。
