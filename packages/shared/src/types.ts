@@ -79,6 +79,10 @@ export interface LineInviteUrl {
   url: string | null;
 }
 
+export interface Me {
+  isAdmin: boolean;
+}
+
 export interface DefaultNotifyTime {
   time: string;
 }

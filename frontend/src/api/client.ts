@@ -7,6 +7,7 @@ import type {
   Item,
   ItemHistoryEntry,
   LineInviteUrl,
+  Me,
   NotificationChannel,
   NotificationLogEntry,
   NotificationRecipient,
@@ -112,4 +113,8 @@ export function getDefaultNotifyTime(): Promise<DefaultNotifyTime> {
 
 export function updateDefaultNotifyTime(time: string): Promise<DefaultNotifyTime> {
   return request("/settings/default-notify-time", { method: "PUT", body: JSON.stringify({ time }) });
+}
+
+export function getMe(): Promise<Me> {
+  return request("/auth/me");
 }

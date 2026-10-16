@@ -82,4 +82,31 @@ describe("App", () => {
 
     expect(screen.getByRole("link", { name: "ログアウト" })).toHaveAttribute("href", "/cdn-cgi/access/logout");
   });
+
+  it("shows an admin link only when the user is an admin", async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes("/auth/me")) {
+        return Promise.resolve(new Response(JSON.stringify({ isAdmin: true }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+    });
+    renderApp();
+
+    expect(await screen.findByRole("link", { name: "管理画面" })).toHaveAttribute("href", "/admin");
+  });
+
+  it("hides the admin link for non-admin users", async () => {
+    fetchMock.mockImplementation((url: string) => {
+      if (url.includes("/auth/me")) {
+        return Promise.resolve(new Response(JSON.stringify({ isAdmin: false }), { status: 200 }));
+      }
+      return Promise.resolve(new Response(JSON.stringify([]), { status: 200 }));
+    });
+    renderApp();
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/auth/me", expect.anything());
+    });
+    expect(screen.queryByRole("link", { name: "管理画面" })).not.toBeInTheDocument();
+  });
 });

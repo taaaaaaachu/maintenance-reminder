@@ -1,5 +1,7 @@
 import { Hono } from "hono";
+import type { Me } from "@maintenance-reminder/shared";
 import type { HonoEnv } from "../types.js";
+import { isAdmin } from "./admin.js";
 
 export const authRouter = new Hono<HonoEnv>();
 
@@ -10,3 +12,6 @@ export const authRouter = new Hono<HonoEnv>();
 // フロントはそれを検出したらこのURLへトップレベル遷移する。Access配下なので
 // 未認証ならログインが要求され、認証後にここへ戻ってきて / にリダイレクトされる。
 authRouter.get("/refresh", (c) => c.redirect("/", 302));
+
+// フロントが管理画面へのリンクを出すかの判定用。
+authRouter.get("/me", (c) => c.json<Me>({ isAdmin: isAdmin(c) }));

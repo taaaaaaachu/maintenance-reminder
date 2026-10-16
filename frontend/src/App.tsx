@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { getMe } from "./api/client.js";
 import { ItemListPage } from "./pages/ItemListPage.js";
 import { SettingsPage } from "./pages/SettingsPage.js";
 import { NotificationLogPage } from "./pages/NotificationLogPage.js";
@@ -22,6 +24,7 @@ function highlightItemIdsFromUrl(): string[] {
 export function App() {
   const [highlightItemIds] = useState<string[]>(highlightItemIdsFromUrl);
   const [tab, setTab] = useState<Tab>("items");
+  const meQuery = useQuery({ queryKey: ["me"], queryFn: getMe });
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -38,6 +41,11 @@ export function App() {
             <button type="button" onClick={() => setTab("log")} className={tabButtonClass(tab === "log")}>
               通知履歴
             </button>
+            {meQuery.data?.isAdmin && (
+              <a href="/admin" className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100">
+                管理画面
+              </a>
+            )}
             <a href="/cdn-cgi/access/logout" className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100">
               ログアウト
             </a>
