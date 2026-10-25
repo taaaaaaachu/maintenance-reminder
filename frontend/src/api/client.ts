@@ -1,9 +1,11 @@
 import type {
   AddNotificationRecipientInput,
+  AgentConnection,
   ApiError,
   CreateItemInput,
   DefaultNotifyTime,
   IcsFeedToken,
+  IssuedAgentToken,
   Item,
   ItemHistoryEntry,
   LineInviteUrl,
@@ -117,4 +119,16 @@ export function updateDefaultNotifyTime(time: string): Promise<DefaultNotifyTime
 
 export function getMe(): Promise<Me> {
   return request("/auth/me");
+}
+
+export function listAgentConnections(): Promise<AgentConnection[]> {
+  return request("/agent-connections");
+}
+
+export function issueAgentToken(name: string): Promise<IssuedAgentToken> {
+  return request("/agent-connections", { method: "POST", body: JSON.stringify({ name }) });
+}
+
+export function revokeAgentConnection(id: string): Promise<void> {
+  return request(`/agent-connections/${id}`, { method: "DELETE" });
 }

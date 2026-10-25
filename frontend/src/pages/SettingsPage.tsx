@@ -3,6 +3,7 @@ import * as api from "../api/client.js";
 import { NotificationChannelCard } from "../components/NotificationChannelCard.js";
 import { IcsFeedCard } from "../components/IcsFeedCard.js";
 import { DefaultNotifyTimeCard } from "../components/DefaultNotifyTimeCard.js";
+import { AgentConnectionsCard } from "../components/AgentConnectionsCard.js";
 
 export function SettingsPage() {
   const settingsQuery = useQuery({ queryKey: ["notificationSettings"], queryFn: api.listNotificationSettings });
@@ -25,6 +26,8 @@ export function SettingsPage() {
       </div>
 
       <IcsFeedCard />
+
+      <AgentConnectionsCard />
     </div>
   );
 }
