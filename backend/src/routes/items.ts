@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { DEFAULT_SNOOZE_DAYS } from "@maintenance-reminder/shared";
+import { DEFAULT_SNOOZE_DAYS, type Item } from "@maintenance-reminder/shared";
 import * as itemsDb from "../db/queries.js";
 import * as historyDb from "../db/history.js";
 import { getConfigValue } from "../db/appConfig.js";
@@ -13,7 +13,7 @@ import type { HonoEnv } from "../types.js";
 export const NOTIFY_TIME_REGEX = /^([01]\d|2[0-3]):(00|30)$/;
 export const DEFAULT_NOTIFY_TIME = "07:00";
 
-const createItemSchema = z.object({
+export const createItemSchema = z.object({
   name: z.string().min(1).max(200),
   category: z.string().max(100).nullable().optional(),
   intervalDays: z.number().int().positive(),
@@ -26,7 +26,7 @@ const createItemSchema = z.object({
     .optional(),
 });
 
-const updateItemSchema = z.object({
+export const updateItemSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   category: z.string().max(100).nullable().optional(),
   intervalDays: z.number().int().positive().optional(),
@@ -36,9 +36,32 @@ const updateItemSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-const snoozeSchema = z.object({
+export const snoozeSchema = z.object({
   days: z.number().int().positive().max(365).optional(),
 });
+
+/** 省略された値を既定値で埋めてアイテムを作る(画面向けAPIとMCPで共通)。 */
+export async function createHouseholdItem(
+  db: D1Database,
+  householdId: string,
+  input: z.infer<typeof createItemSchema>,
+): Promise<Item> {
+  const lastDoneAt = input.lastDoneAt ?? todayJstDateString();
+  const notifyTime =
+    input.notifyTime ?? (await getConfigValue(db, householdId, DEFAULT_NOTIFY_TIME_KEY)) ?? DEFAULT_NOTIFY_TIME;
+  return itemsDb.createItem(db, {
+    id: crypto.randomUUID(),
+    householdId,
+    name: input.name,
+    category: input.category ?? null,
+    intervalDays: input.intervalDays,
+    notifyDaysBefore: input.notifyDaysBefore ?? 0,
+    notifyTime,
+    memo: input.memo ?? null,
+    lastDoneAt,
+    nextDueAt: addDaysToDateString(lastDoneAt, input.intervalDays),
+  });
+}
 
 export const itemsRouter = new Hono<HonoEnv>();
 
@@ -53,24 +76,7 @@ itemsRouter.get("/", async (c) => {
 itemsRouter.post("/", async (c) => {
   const parsed = createItemSchema.safeParse(await c.req.json());
   if (!parsed.success) throw badRequest(parsed.error.message);
-  const input = parsed.data;
-  const householdId = c.get("householdId");
-  const lastDoneAt = input.lastDoneAt ?? todayJstDateString();
-  const notifyTime =
-    input.notifyTime ?? (await getConfigValue(c.env.DB, householdId, DEFAULT_NOTIFY_TIME_KEY)) ?? DEFAULT_NOTIFY_TIME;
-  const item = await itemsDb.createItem(c.env.DB, {
-    id: crypto.randomUUID(),
-    householdId,
-    name: input.name,
-    category: input.category ?? null,
-    intervalDays: input.intervalDays,
-    notifyDaysBefore: input.notifyDaysBefore ?? 0,
-    notifyTime,
-    memo: input.memo ?? null,
-    lastDoneAt,
-    nextDueAt: addDaysToDateString(lastDoneAt, input.intervalDays),
-  });
-  return c.json(item, 201);
+  return c.json(await createHouseholdItem(c.env.DB, c.get("householdId"), parsed.data), 201);
 });
 
 itemsRouter.get("/:id", async (c) => {

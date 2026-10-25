@@ -185,7 +185,7 @@ export async function authenticateAgent(db: D1Database, token: string, now = Dat
 
 function originOf(clientId: string | null, dcrRedirectUris: string | null): string {
   if (!clientId) return "手動発行";
-  const url = dcrRedirectUris ? (JSON.parse(dcrRedirectUris) as string[])[0] : clientId;
+  const url = (dcrRedirectUris ? (JSON.parse(dcrRedirectUris) as string[])[0] : clientId) ?? "";
   return URL.canParse(url) ? new URL(url).host + (dcrRedirectUris ? "(自己登録)" : "") : clientId;
 }
 

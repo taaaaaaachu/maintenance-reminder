@@ -1,6 +1,8 @@
 name = "maintenance-reminder"
 main = "src/index.ts"
 compatibility_date = "2026-07-01"
+# CIMD(エージェントのクライアント情報)の取得で、fetchが自ゾーンのオリジンへ近道しないようにする(SSRF対策)
+compatibility_flags = ["global_fetch_strictly_public"]
 # workers.devとPreview URLはAccessで保護されないため無効にする
 workers_dev = false
 preview_urls = false
@@ -13,7 +15,7 @@ custom_domain = true
 directory = "../frontend/dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
-run_worker_first = ["/api/*", "/feed/*", "/webhook/*"]
+run_worker_first = ["/api/*", "/feed/*", "/webhook/*", "/mcp", "/oauth/*", "/.well-known/*"]
 
 [[d1_databases]]
 binding = "DB"
