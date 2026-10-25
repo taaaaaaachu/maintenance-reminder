@@ -149,3 +149,20 @@ export interface HouseholdInvite {
   usedAt: string | null;
   expiresAt: string | null;
 }
+
+/** エージェント接続(CONTEXT.md)。トークンそのものは含まない。 */
+export interface AgentConnection {
+  id: string;
+  name: string;
+  issuerEmail: string;
+  /** 一覧での見分け方。「手動発行」・CIMDのドメイン・DCRの戻り先のドメイン。 */
+  origin: string;
+  createdAt: string;
+  lastUsedAt: string;
+}
+
+/** 手動発行の結果。tokenはこのときしか分からない。 */
+export interface IssuedAgentToken {
+  id: string;
+  token: string;
+}
