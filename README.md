@@ -142,6 +142,29 @@ npm run deploy
 - 作成したアプリケーションのAUDタグ(Access > Applications > 該当アプリ)を`wrangler.toml`の`ACCESS_AUD`に、team domainを`ACCESS_TEAM_DOMAIN`に設定します。
 - `workers_dev = false`と`preview_urls = false`のままにしてください。workers.devとPreview URLはAccessで保護されません。
 
+### AIエージェント(MCP)用のBypass
+
+AIエージェントのサーバーはAccessのログインを通れないため、次のパスも「Bypass」ポリシーの別アプリケーションとして除外します(`/feed/*`・`/webhook/*`と同じやり方)。これらのパスはAccess JWTを見ず、エージェント接続のトークンや認可コード+PKCEだけで認証します。
+
+| パス | 用途 |
+|---|---|
+| `/mcp` | MCPエンドポイント(Bearerトークンで認証) |
+| `/oauth/token` | トークンの発行・リフレッシュ |
+| `/oauth/register` | クライアントの動的登録(DCR) |
+| `/oauth/revoke` | トークンの取り消し |
+| `/.well-known/*` | OAuthのメタデータ |
+
+**`/oauth/authorize`(同意画面)はBypassしないでください。** Accessの内側で、ログインした人のメールアドレスを「誰が許可したか」として使います。`/oauth/*`をまとめてBypassすると、同意画面で誰も認証されなくなります(その場合は許可できず401になります)。
+
+## AIエージェントの接続(MCP)
+
+MCPサーバーのURLは`https://<デプロイ先ドメイン>/mcp`です。エージェントが操作できるのは、接続した人の世帯のアイテム(一覧・作成・編集・削除・完了・スヌーズ・履歴)と通知履歴の閲覧だけです。
+
+- **OAuth 2.1に対応したエージェント**: URLを登録すると、ブラウザで同意画面が開きます。許可すると接続されます(クライアント登録はCIMDとDCRの両方に対応)。
+- **対応していないエージェント**: 「通知設定」タブの「AIエージェントの接続」でトークンを発行し、`Authorization: Bearer <トークン>`として渡します。
+
+接続は同じタブの一覧から、世帯のメンバーなら誰でも取り消せます。90日使われなかった接続は自動で失効します。
+
 ## LINE連携
 
 - LINE DevelopersのチャネルでWebhook URLに`https://<デプロイ先ドメイン>/webhook/line`を指定し、Webhookを有効にします。応答メッセージ機能はオフにしてください(Botの自動応答と競合するため)。

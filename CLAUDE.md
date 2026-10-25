@@ -19,7 +19,7 @@ npm workspaces モノレポ
 └── frontend          … React + Vite (SPA)
 ```
 
-- **backend**: Hono + Zod。`backend/src/router.ts`が`/api/items`, `/api/settings`, `/api/notification-log`, `/api/admin`, `/api/auth`, `/feed`, `/webhook`をマウント。D1へは素のSQL(ORM不使用、テーブル数が少なく過剰な抽象化のため)。
+- **backend**: Hono + Zod。`backend/src/router.ts`が`/api/items`, `/api/settings`, `/api/notification-log`, `/api/admin`, `/api/auth`, `/api/agent-connections`, `/feed`, `/webhook`, `/mcp`, `/oauth`, `/.well-known`をマウント。D1へは素のSQL(ORM不使用、テーブル数が少なく過剰な抽象化のため)。
 - **frontend**: React 19 + TanStack Query + Tailwind CSS v4。タブ切り替え(アイテム一覧/通知設定/通知履歴)のシンプルなSPA。パスが`/admin`のときだけ管理画面(`frontend/src/admin/AdminApp.tsx`)を表示し、通常画面のヘッダーには`GET /api/auth/me`が`isAdmin: true`を返したときだけ管理画面へのリンクを出す。
 - **DB**: Cloudflare D1(SQLite互換)。マイグレーションは`backend/migrations/*.sql`を`wrangler d1 migrations apply`で適用。
 - **通知**: LINE Messaging API(push+reply)、Resend(メール)、Pushover。`backend/src/notifications/dispatcher.ts`が宛先ごとにfan-out。
@@ -41,6 +41,7 @@ npm workspaces モノレポ
 - **通知は同一チャネル・宛先ごとに1通へまとめる**。`checkReminders.ts`は`item×channel×recipient`ではなく`channel×recipient`単位でループし、その回の該当アイテムをすべて`buildReminderMessage`に配列で渡して1通に集約する(1件なら従来通りの詳細文面、複数件なら箇条書き)。通知履歴(`notification_log`)への記録と冪等性チェック(`hasSuccessfulNotificationSince`)はアイテム単位のまま維持している。
 - **完了/スヌーズは`item_history`テーブルに全件記録する**(`backend/src/db/history.ts`)。`completeItem`/`snoozeItem`(`backend/src/db/queries.ts`)内でitems更新と同じ関数呼び出しの中でINSERTしており、履歴記録漏れを防ぐために呼び出し側(ルートハンドラー)に記録処理を分散させない。`items.recentSnoozeCount`(直近30日のスヌーズ回数)は`listItems`/`getItem`のSQLにサブクエリを埋め込んで一括計算しており、N+1を避けている。
 - **月次サマリー通知は`app_config`の`last_monthly_summary_month`キーで冪等性を担保する**(`backend/src/scheduled/sendMonthlySummary.ts`)。Cronは30分おきに走るため、「JST月初かつ07:00固定」の条件だけでは同一実行タイミングでの重複送信リスクがあり、送信済み月をD1に記録して二重送信を防いでいる。通知履歴(`notification_log`)には記録しない(月次サマリーは特定のitemに紐づかないため)。
+- **AIエージェントはMCP(`/mcp`)と自前のOAuth 2.1認可サーバーで繋ぐ**(用語は`CONTEXT.md`の「エージェント接続」、理由は`docs/adr/0001-own-oauth-server-on-d1.md`)。`@cloudflare/workers-oauth-provider`はKV必須で書き込み上限(1,000回/日)に当たるため使わず、接続・DCR登録・認可コードはすべてD1(`agent_connections`/`oauth_clients`/`oauth_codes`)に置く。isolate間で共有されないためメモリ上のMapにキャッシュしない。接続は発行者のメールと世帯に結びつき、使うたびに`household_members`と突き合わせる。トークンは`/mcp`以外(`/api/*`)では受け付けない。MCPのツールはアイテム操作と履歴の閲覧だけで、通知設定・ICS・招待・管理は出さない。
 
 ## ハマりどころ
 
@@ -52,6 +53,7 @@ npm workspaces モノレポ
 - **Accessのログインコールバック`/cdn-cgi/access/*`もSWの`navigateFallbackDenylist`に必ず含める**(`frontend/vite.config.ts`)。Accessは認証後ブラウザを`/cdn-cgi/access/authorized?nonce=...&state=...`へリダイレクトし、そのレスポンスでセッションクッキー(`CF_Authorization`)を再発行して本来の宛先へ302で戻す。この`/cdn-cgi/`ナビゲーションをSWのnavigateFallback(アプリシェル)が食うと、コールバックがハンドシェイクを完了できずクッキーが再発行されないため、SPAはコールバックURL上で起動してしまい以後のAPIが延々302→「再ログインしています…」ループに陥る(通常リロードではSWが介入するため再現、`Ctrl+Shift+R`はSWをバイパスするので正常表示される)。上の`redirect: "manual"`の仕組みだけでは救えず、`navigateFallbackDenylist`に`/^\/cdn-cgi\//`が入っていることが前提。
 - **SWの不具合修正は「デプロイすれば直る」とは限らない(未認証端末のSW更新デッドロック)**。SWの更新チェック(`GET /sw.js`)やprecacheのアセット取得もAccess保護下にあり、未認証だと302が返ってSWスクリプトのfetchは失敗扱いになる。そのため「古いSWがAccessコールバックを食う→認証が完了しない→未認証のままだからSW更新も失敗する」の循環に陥った端末は、修正版SWをデプロイしても自力で復旧できない。復旧には端末側の操作(デスクトップ: 壊れたページで`Ctrl+Shift+R`、iOSホーム画面PWA: 削除→Safariでログイン→再追加、Android PWA: サイトデータ削除)か、Accessアプリを一時的にBypassにしてSW更新を通す時限対応が必要。この教訓から、SPAが`/cdn-cgi/`のURL上で起動してしまった場合の自己修復コード(`frontend/src/swRecovery.ts`: SW全解除→`/api/auth/refresh`へ遷移。`main.tsx`の起動時チェックから呼ぶ)を入れている。外さないこと。
 - **workboxの`runtimeCaching`で`urlPattern`にRegExpを渡すとフルURL(`https://...`)に対してテストされる**。`/^\/api\//`のようなパス前提の正規表現は一切マッチしない(RegExpRouteはsame-originでも先頭一致を要求)。パス判定は`({ url }) => url.pathname.startsWith("/api/")`のように関数で書く。
+- **`/mcp`・`/oauth/token`・`/oauth/register`・`/oauth/revoke`・`/.well-known/*`はAccessをBypassし、`/oauth/authorize`はAccessの内側に残す**(ダッシュボード側の設定。手順はREADME)。Bypassしたパスのハンドラーでは`resolveUserEmail`を呼ばずトークンだけで認証し、同意画面だけがAccess JWTで発行者を決める。これらのパスは`run_worker_first`とSWの`navigateFallbackDenylist`にも入れてある。同意画面のPOSTは`hono/csrf`でOriginを検査しており、`hono/csrf`が投げる`HTTPException`は`router.ts`の`onError`で素通しする(500にしない)。CIMDの取得は`redirect: "manual"`・5秒・10KBの制限付きで、`global_fetch_strictly_public`フラグで自ゾーンへの近道も塞いでいる。
 
 ## 開発運用
 
