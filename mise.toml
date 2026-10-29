@@ -1,0 +1,4 @@
+[tools]
+node = "26.13.0"
+# Node 25以降はcorepackが同梱されないため別途入れる(pnpmはpackageManagerの版をcorepack経由で使う)
+"npm:corepack" = "0.36.0"

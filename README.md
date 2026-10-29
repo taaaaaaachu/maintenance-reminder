@@ -15,7 +15,7 @@
 
 ## 事前に必要なもの
 
-- Node.js(LTS系。開発時はNode.js 24系)
+- Node.js 26.13.0(リポジトリ直下の`mise.toml`で指定。mise以外でも同じ版を使ってください)
 - Cloudflareアカウント(Workers・D1・Cron Triggers・Accessを無料枠で利用)
 - 通知チャネルごとに以下のアカウント(使わないチャネルは無効のままでも動きます)
   - LINE: [LINE Developers](https://developers.line.biz/) でMessaging APIチャネルを作成

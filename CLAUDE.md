@@ -57,6 +57,7 @@ pnpm workspaces モノレポ
 
 ## 開発運用
 
+- Node.jsの版はリポジトリ直下の`mise.toml`で固定(CIの`deploy.yml`の`node-version`も同じ版に揃える)。Node 25以降はcorepackが同梱されないため、`mise.toml`で`npm:corepack`も入れてpnpmを使えるようにしている。
 - 型チェック: `pnpm run typecheck`(shared→backend→frontendの順)
 - テスト: `pnpm run test`(backend: vitest + @cloudflare/vitest-plugin、frontend: vitest + Testing Library)
 - デプロイ: GitHub Actions(`.github/workflows/deploy.yml`)がmainブランチへのpushで自動的にD1マイグレーション適用+デプロイまで行う。**つまりpush = 即本番反映**。`wrangler.toml`のドメイン等はプレースホルダーなので、**ローカルから`pnpm run deploy`しないこと**(本番の値がプレースホルダーで上書きされる)。
