@@ -13,7 +13,7 @@
     "db:migrations:apply:remote": "wrangler d1 migrations apply maintenance-reminder-db --remote"
   },
   "dependencies": {
-    "@maintenance-reminder/shared": "*",
+    "@maintenance-reminder/shared": "workspace:*",
     "@modelcontextprotocol/server": "^2.4.0",
     "hono": "^4.12.27",
     "jose": "^6.2.12",

@@ -12,7 +12,7 @@
     "generate-pwa-assets": "pwa-assets-generator"
   },
   "dependencies": {
-    "@maintenance-reminder/shared": "*",
+    "@maintenance-reminder/shared": "workspace:*",
     "@tanstack/react-query": "^5.101.2",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"

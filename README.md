@@ -27,22 +27,22 @@
 ### 1. 依存関係のインストール
 
 ```
-npm install
+pnpm install
 ```
 
-npm workspaces構成(`packages/shared`, `backend`, `frontend`)なので、ルートで一度実行すれば全ワークスペース分入ります。
+pnpm workspaces構成(`packages/shared`, `backend`, `frontend`)なので、ルートで一度実行すれば全ワークスペース分入ります。
 
 ### 2. Cloudflareにログイン
 
 ```
 cd backend
-npx wrangler login
+pnpm exec wrangler login
 ```
 
 ### 3. D1データベースを作成
 
 ```
-npx wrangler d1 create maintenance-reminder-db
+pnpm exec wrangler d1 create maintenance-reminder-db
 ```
 
 出力される `database_id` を `backend/wrangler.toml` の `[[d1_databases]]` セクションに転記してください(リポジトリに入っているIDは開発者のデータベースのものなので、必ず自分のものに書き換えます)。
@@ -50,8 +50,8 @@ npx wrangler d1 create maintenance-reminder-db
 ### 4. マイグレーション適用
 
 ```
-npm run db:migrations:apply:local --workspace=backend
-npm run db:migrations:apply:remote --workspace=backend
+pnpm --filter backend db:migrations:apply:local
+pnpm --filter backend db:migrations:apply:remote
 ```
 
 マイグレーション `0010` で、最初の世帯(`自宅`)とそのメンバー `owner@example.com` が作られます。本番では、管理画面で自分のメールアドレスを世帯のメンバーに追加してください。
@@ -81,11 +81,11 @@ cp backend/.dev.vars.example backend/.dev.vars
 
 ```
 cd backend
-npx wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
-npx wrangler secret put LINE_CHANNEL_SECRET
-npx wrangler secret put RESEND_API_KEY
-npx wrangler secret put PUSHOVER_API_TOKEN
-npx wrangler secret put ADMIN_EMAIL
+pnpm exec wrangler secret put LINE_CHANNEL_ACCESS_TOKEN
+pnpm exec wrangler secret put LINE_CHANNEL_SECRET
+pnpm exec wrangler secret put RESEND_API_KEY
+pnpm exec wrangler secret put PUSHOVER_API_TOKEN
+pnpm exec wrangler secret put ADMIN_EMAIL
 ```
 
 ### 7. wrangler.tomlを自分の環境向けに調整
@@ -103,8 +103,8 @@ GitHub Actionsでデプロイする場合は、ファイルを書き換えずに
 ### 8. ローカル起動
 
 ```
-npm run dev:backend    # http://localhost:8787 でWorkerが起動
-npm run dev:frontend   # http://localhost:5173 でVite dev server起動
+pnpm run dev:backend   # http://localhost:8787 でWorkerが起動
+pnpm run dev:frontend  # http://localhost:5173 でVite dev server起動
 ```
 
 ### 9. デプロイ
@@ -112,7 +112,7 @@ npm run dev:frontend   # http://localhost:5173 でVite dev server起動
 GitHub Actions(後述)を使うのがおすすめです。手元からデプロイする場合は、手順7の値を書き換えたうえで実行してください。
 
 ```
-npm run deploy
+pnpm run deploy
 ```
 
 フロントエンドのビルド後、`wrangler deploy`が実行されます。
@@ -173,8 +173,8 @@ MCPサーバーのURLは`https://<デプロイ先ドメイン>/mcp`です。エ�
 ## よく使うコマンド
 
 ```
-npm run typecheck   # 全ワークスペースの型チェック
-npm run test        # 全ワークスペースのテスト
+pnpm run typecheck  # 全ワークスペースの型チェック
+pnpm run test       # 全ワークスペースのテスト
 ```
 
 ## ライセンス

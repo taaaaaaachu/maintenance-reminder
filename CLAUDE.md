@@ -13,7 +13,7 @@
 Cloudflare Workers 1本(Workers Static Assets)で、フロントエンド配信・API・Cronバッチをすべて処理する。Cloudflare PagesとWorkersを分けず、`wrangler deploy`一発でフロント+バックエンドを同時デプロイする。
 
 ```
-npm workspaces モノレポ
+pnpm workspaces モノレポ
 ├── packages/shared   … フロント/バックエンド共有の型定義(Item, NotificationChannel等)
 ├── backend           … Cloudflare Workers本体(Hono + D1)
 └── frontend          … React + Vite (SPA)
@@ -57,9 +57,9 @@ npm workspaces モノレポ
 
 ## 開発運用
 
-- 型チェック: `npm run typecheck`(shared→backend→frontendの順)
-- テスト: `npm run test`(backend: vitest + vitest-pool-workers、frontend: vitest + Testing Library)
-- デプロイ: GitHub Actions(`.github/workflows/deploy.yml`)がmainブランチへのpushで自動的にD1マイグレーション適用+デプロイまで行う。**つまりpush = 即本番反映**。`wrangler.toml`のドメイン等はプレースホルダーなので、**ローカルから`npm run deploy`しないこと**(本番の値がプレースホルダーで上書きされる)。
+- 型チェック: `pnpm run typecheck`(shared→backend→frontendの順)
+- テスト: `pnpm run test`(backend: vitest + vitest-pool-workers、frontend: vitest + Testing Library)
+- デプロイ: GitHub Actions(`.github/workflows/deploy.yml`)がmainブランチへのpushで自動的にD1マイグレーション適用+デプロイまで行う。**つまりpush = 即本番反映**。`wrangler.toml`のドメイン等はプレースホルダーなので、**ローカルから`pnpm run deploy`しないこと**(本番の値がプレースホルダーで上書きされる)。
 - 実装のたびに対象範囲の単体テストを書いて実行し、意味のある単位でこまめにコミットする(グローバル指示`~/.claude/CLAUDE.md`のルールをこのプロジェクトでも適用)。
 - 本番環境・運用手順など個人の環境に依存する指示は、gitignore対象の`CLAUDE.local.md`に書く(公開リポジトリのため)。
 - **push前にはユーザーのローカル動作確認を挟むこと。** コミットまでは自動で進めてよいが、`git push`は保留し、確認してほしい項目をまとめて伝えてから、ユーザーの確認OKを待って実行する。
