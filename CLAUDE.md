@@ -45,7 +45,7 @@ pnpm workspaces モノレポ
 
 ## ハマりどころ
 
-- **`@cloudflare/vitest-pool-workers`は新API(`cloudflareTest` Viteプラグイン)を使う**。`defineWorkersConfig`/`cloudflare:test`は古いAPIで動かない。テスト内で環境にアクセスするときは`cloudflare:workers`から`env`/`exports`をimportする。
+- **`@cloudflare/vitest-plugin`(旧`@cloudflare/vitest-pool-workers`)は新API(`cloudflareTest` Viteプラグイン)を使う**。`defineWorkersConfig`/`cloudflare:test`は古いAPIで動かない。テスト内で環境にアクセスするときは`cloudflare:workers`から`env`/`exports`をimportする。
 - **`Env`型ではなく`Cloudflare.Env`を拡張する**。`cloudflare:workers`の`env`エクスポートが実際に参照する型は`declare global { namespace Cloudflare { interface Env {...} } }`の方(`backend/src/env.d.ts`参照)。
 - **`/feed/*`と`/webhook/*`はSPAフォールバックに食われるので`run_worker_first`が必須**(`wrangler.toml`の`[assets]`)。Workers Static Assetsはデフォルトでは静的アセット/SPAフォールバックを先に評価する。
 - **Cron TriggersにはCloudflareアカウントのworkers.dev登録が必要**(custom domainのみでルーティングしていても)。未登録だとデプロイ時にエラーコード10063が出る。必要なのはアカウントのworkers.devサブドメインの登録で、このWorkerのworkers.dev URLは`workers_dev = false`のまま無効にしておく(Accessで保護されないため)。
@@ -58,7 +58,7 @@ pnpm workspaces モノレポ
 ## 開発運用
 
 - 型チェック: `pnpm run typecheck`(shared→backend→frontendの順)
-- テスト: `pnpm run test`(backend: vitest + vitest-pool-workers、frontend: vitest + Testing Library)
+- テスト: `pnpm run test`(backend: vitest + @cloudflare/vitest-plugin、frontend: vitest + Testing Library)
 - デプロイ: GitHub Actions(`.github/workflows/deploy.yml`)がmainブランチへのpushで自動的にD1マイグレーション適用+デプロイまで行う。**つまりpush = 即本番反映**。`wrangler.toml`のドメイン等はプレースホルダーなので、**ローカルから`pnpm run deploy`しないこと**(本番の値がプレースホルダーで上書きされる)。
 - 実装のたびに対象範囲の単体テストを書いて実行し、意味のある単位でこまめにコミットする(グローバル指示`~/.claude/CLAUDE.md`のルールをこのプロジェクトでも適用)。
 - 本番環境・運用手順など個人の環境に依存する指示は、gitignore対象の`CLAUDE.local.md`に書く(公開リポジトリのため)。
