@@ -174,6 +174,7 @@ MCPサーバーのURLは`https://<デプロイ先ドメイン>/mcp`です。エ�
 
 ```
 pnpm run typecheck  # 全ワークスペースの型チェック
+pnpm run lint       # 全ワークスペースのlint
 pnpm run test       # 全ワークスペースのテスト
 ```
 
