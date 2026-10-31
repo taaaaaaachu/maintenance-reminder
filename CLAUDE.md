@@ -59,6 +59,7 @@ pnpm workspaces モノレポ
 
 - Node.jsとpnpmの版はリポジトリ直下の`mise.toml`で固定(CIの`deploy.yml`の`node-version`も同じ版に揃える)。Node 25以降はcorepackが同梱されないため、pnpmも`mise.toml`の`npm:pnpm`で入れている。pnpmを上げるときは`package.json`の`packageManager`(CIの`pnpm/action-setup`が読む)も同じ版に揃える。
 - 型チェック: `pnpm run typecheck`(shared→backend→frontendの順)
+- lint: `pnpm run lint`(ルートの`eslint.config.js`でモノレポ全体を検査)
 - テスト: `pnpm run test`(backend: vitest + @cloudflare/vitest-plugin、frontend: vitest + Testing Library)
 - デプロイ: GitHub Actions(`.github/workflows/deploy.yml`)がmainブランチへのpushで自動的にD1マイグレーション適用+デプロイまで行う。**つまりpush = 即本番反映**。`wrangler.toml`のドメイン等はプレースホルダーなので、**ローカルから`pnpm run deploy`しないこと**(本番の値がプレースホルダーで上書きされる)。
 - 実装のたびに対象範囲の単体テストを書いて実行し、意味のある単位でこまめにコミットする(グローバル指示`~/.claude/CLAUDE.md`のルールをこのプロジェクトでも適用)。
