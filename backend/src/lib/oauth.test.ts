@@ -156,7 +156,8 @@ describe("parseAuthorizeRequest", () => {
     });
   });
   it("client_id・redirect_uriが無ければ戻り先へ返せない誤り", () => {
-    const { client_id: _c, ...noClient } = base;
+    const noClient: Record<string, string> = { ...base };
+    delete noClient.client_id;
     expect(parse(noClient)).toHaveProperty("fatal");
   });
   it("PKCEなし・plain・別のresourceは戻り先へ返す誤り", () => {
