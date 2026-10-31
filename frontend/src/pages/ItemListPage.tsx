@@ -22,7 +22,7 @@ export function ItemListPage({ highlightItemIds = [] }: ItemListPageProps) {
     queryKey: ["defaultNotifyTime"],
     queryFn: api.getDefaultNotifyTime,
   });
-  const items = itemsQuery.data ?? [];
+  const items = useMemo(() => itemsQuery.data ?? [], [itemsQuery.data]);
   const categories = useMemo(
     () => Array.from(new Set(items.map((item) => item.category).filter((c): c is string => !!c))).sort(),
     [items],
