@@ -1,4 +1,4 @@
 [tools]
 node = "26.13.0"
 # Node 25以降はcorepackが同梱されないため、pnpmもmiseで入れる(版はpackage.jsonのpackageManagerと揃える)
-"npm:pnpm" = "12.18.0"
+"npm:pnpm" = { version = "12.18.0", allow_builds = ["pnpm"] }
