@@ -15,15 +15,15 @@
   "dependencies": {
     "@maintenance-reminder/shared": "workspace:*",
     "@modelcontextprotocol/server": "^2.4.0",
-    "hono": "^4.13.16",
-    "jose": "^6.2.15",
+    "hono": "^4.13.18",
+    "jose": "^6.2.17",
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@cloudflare/vitest-plugin": "^1.6.0",
+    "@cloudflare/vitest-plugin": "^1.8.0",
     "@modelcontextprotocol/client": "^2.4.0",
     "typescript": "^6.0.3",
     "vitest": "^5.1.0",
-    "wrangler": "^4.158.0"
+    "wrangler": "^4.160.1"
   }
 }
